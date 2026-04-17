@@ -1,0 +1,21 @@
+---
+description: BaseProjectScaffold — .NET 9 Clean Architecture rules
+globs:
+  - "**/*.cs"
+  - "**/*.csproj"
+alwaysApply: true
+---
+
+The authoritative instructions for this repository live in [CLAUDE.md](../../CLAUDE.md). Follow them for all code changes.
+
+Quick summary (see `CLAUDE.md` for full context):
+
+- **Architecture**: Domain → Application → Infra → Web.API. Never reverse. Enforced by `ArchitectureTests`.
+- **Handlers**: `public sealed class`, implement `ICommandHandler<,>` / `IQueryHandler<,>`. No manual validation — the Scrutor `ValidationDecorator` runs `AbstractValidator<T>` automatically.
+- **Endpoints**: `internal sealed class` implementing `IEndpoint`. Inject the **interface** (`ICommandHandler<T, TResp>`), not the concrete handler. Always call `.RequireAuthorization()` unless explicitly public.
+- **Result pattern**: `Result<T>` / `Result`. Never throw for control flow. Map to HTTP via `result.Match(onSuccess, CustomResults.Problem)`.
+- **Secrets**: come from env vars. `appsettings.json` ships with empty secrets; `appsettings.Development.json` has safe dev defaults.
+- **Tests**: xUnit + Shouldly + Moq. Unit tests for handlers + validators. Integration tests use `CustomWebApplicationFactory` (EF InMemory + signed JWT). Architecture tests guard layer rules.
+- **Style**: `ImplicitUsings` + `Nullable` enabled. File-scoped namespaces. Records for DTOs. Primary constructors. `CancellationToken` as the last parameter of async methods.
+
+Before adding a new use case, follow the canonical steps in `CLAUDE.md` §5 (Command → Validator → Handler → Endpoint → Tests).
