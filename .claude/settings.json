@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "document-skills@anthropic-agent-skills": true,
+    "debugging-code@debug-skill-marketplace": true
+  }
+}

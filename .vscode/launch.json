@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Core Launch (Web.API)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Web.API/bin/Debug/net9.0/Web.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Web.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": ".NET Core Launch (CronJobs)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/CronJobs/bin/Debug/net9.0/CronJobs.dll",
+      "cwd": "${workspaceFolder}/src/CronJobs",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": { "DOTNET_ENVIRONMENT": "Development" }
+    },
+    {
+      "name": ".NET Core Launch (Worker)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Worker/bin/Debug/net9.0/Worker.dll",
+      "cwd": "${workspaceFolder}/src/Worker",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": { "DOTNET_ENVIRONMENT": "Development" }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+.containers/*
+.vs/
+.idea/
+*.user
+.DS_Store

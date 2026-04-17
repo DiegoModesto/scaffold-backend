@@ -1,0 +1,53 @@
+services:
+  web.api:
+    image: ${DOCKER_REGISTRY-}webapi
+    container_name: base_scaffold_api
+    depends_on:
+      - postgres
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: src/Web.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
+    ports:
+      - "5000:8080"
+      - "5001:8081"
+
+  postgres:
+    image: postgres:17
+    container_name: base_scaffold_db
+    environment:
+      - POSTGRES_DB=base_scaffold
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./.containers/db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: base_scaffold_mq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  seq:
+    image: datalust/seq:latest
+    container_name: base_scaffold_seq
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - ./.containers/seq:/data
+
+volumes:
+  postgresql_data:
+    driver: local
