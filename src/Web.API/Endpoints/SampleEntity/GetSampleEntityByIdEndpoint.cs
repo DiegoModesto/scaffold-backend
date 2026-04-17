@@ -1,3 +1,4 @@
+using Application.Abstractions.Messaging;
 using Application.SampleEntities.GetById;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
@@ -10,7 +11,7 @@ internal sealed class GetSampleEntityByIdEndpoint : IEndpoint
     {
         app.MapGet("sample-entities/{id:guid}", async (
                 Guid id,
-                GetSampleEntityByIdQueryHandler handler,
+                IQueryHandler<GetSampleEntityByIdQuery, SampleEntityResponse> handler,
                 CancellationToken cancellationToken) =>
             {
                 var result = await handler.Handle(new GetSampleEntityByIdQuery(id), cancellationToken);
@@ -18,6 +19,7 @@ internal sealed class GetSampleEntityByIdEndpoint : IEndpoint
                 return result.Match(Results.Ok, CustomResults.Problem);
             })
             .WithTags(Tags.SampleEntity)
-            .WithName("GetSampleEntityById");
+            .WithName("GetSampleEntityById")
+            .RequireAuthorization();
     }
 }

@@ -12,11 +12,6 @@ public sealed class CreateSampleEntityCommandHandler(IApplicationDbContext dbCon
         CreateSampleEntityCommand command,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
-        {
-            return Result.Failure<Guid>(SampleEntityErrors.NameRequired);
-        }
-
         var entity = new SampleEntity
         {
             Id = Guid.NewGuid(),

@@ -1,3 +1,4 @@
+using Application.Abstractions.Messaging;
 using Application.SampleEntities.Create;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
@@ -12,7 +13,7 @@ internal sealed class CreateSampleEntityEndpoint : IEndpoint
     {
         app.MapPost("sample-entities", async (
                 Request request,
-                CreateSampleEntityCommandHandler handler,
+                ICommandHandler<CreateSampleEntityCommand, Guid> handler,
                 CancellationToken cancellationToken) =>
             {
                 var command = new CreateSampleEntityCommand(request.Name, request.Description);
@@ -24,6 +25,7 @@ internal sealed class CreateSampleEntityEndpoint : IEndpoint
                     CustomResults.Problem);
             })
             .WithTags(Tags.SampleEntity)
-            .WithName("CreateSampleEntity");
+            .WithName("CreateSampleEntity")
+            .RequireAuthorization();
     }
 }

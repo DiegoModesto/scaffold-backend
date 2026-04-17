@@ -3,6 +3,7 @@ using Asp.Versioning;
 using Asp.Versioning.Builder;
 using Infra;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Web.API;
@@ -29,7 +30,9 @@ builder.Services.AddSwaggerGenWithAuth();
 builder.Services
     .AddApplication()
     .AddPresentation()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddApiCors(builder.Configuration)
+    .AddApiRateLimiting();
 
 WebApplication app = builder.Build();
 
@@ -65,6 +68,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseCors(SecurityExtensions.DefaultCorsPolicy);
+app.UseRateLimiter();
 
 app.UseRequestContextLogging();
 app.UseSerilogRequestLogging();
