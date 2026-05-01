@@ -37,6 +37,7 @@ Worker   ──► Infra
 | All `ICommandHandler<>` / `ICommandHandler<,>` / `IQueryHandler<,>` implementations must be `sealed` | Perf + clarity | NetArchTest |
 | All `IEndpoint` implementations must be `sealed` | Same | NetArchTest |
 | Endpoints inject the **handler interface**, never the concrete class | Otherwise the `ValidationDecorator` is bypassed | Manual (see §5) |
+| Concrete `IMessagePublisher` implementations must live in `Infra` (not `Application`/`Worker`/`CronJobs`/`Web.API`) | Multiple entrypoints share a single broker abstraction | NetArchTest |
 
 **If you need to break one of these rules, stop and justify it in a PR description — don't silently disable the test.**
 
@@ -56,28 +57,36 @@ src/
 │   │   └── Messaging/               # ICommand, IQuery, ICommandHandler, IQueryHandler, IMessagePublisher
 │   ├── SampleEntities/              # <REPLACE> one folder per feature
 │   │   ├── Create/                  # Command + Handler + Validator
-│   │   └── GetById/                 # Query + Handler + Response DTO
+│   │   ├── GetById/                 # Query + Handler + Response DTO
+│   │   ├── Publish/                 # Command/Validator/Handler that publishes via IMessagePublisher
+│   │   └── Events/                  # Message contracts shared across publishers/consumers
 │   └── DependencyInjection.cs       # AddApplication() — Scrutor scan + TryDecorate
 ├── Infra/
 │   ├── Authentication/              # UserContext, PasswordHasher, TokenProvider, InvalidClaimException
 │   ├── Config/                      # EF entity configurations (AbstractConfiguration<T>)
 │   ├── Database/                    # ApplicationDbContext, Schemas
-│   └── DependencyInjection.cs       # AddInfrastructure() — DbContext, JWT, auth
-├── Web.API/
-│   ├── Endpoints/                   # One folder per feature, each file implements IEndpoint
-│   ├── Extensions/                  # ConfigurationExtensions, EndpointExtensions, ResultExtensions,
-│   │                                # SecurityExtensions (CORS + rate limit), ServiceCollectionExtensions
-│   ├── Infrastructure/              # CustomResults (ProblemDetails mapping)
-│   ├── Middleware/                  # GlobalExceptionHandlingMiddleware, RequestContextLoggingMiddleware,
-│   │                                # SecurityHeadersMiddleware
-│   ├── Program.cs                   # Composition root
-│   ├── DependencyInjection.cs       # AddPresentation()
-│   ├── appsettings.json             # ⚠️ empty secrets — env vars supply them
-│   └── appsettings.Development.json # Safe dev defaults
-├── CronJobs/                        # BackgroundService + Cronos scheduler
-│   └── Jobs/CronBackgroundService.cs + SampleCronJob.cs
-└── Worker/                          # RabbitMQ consumer
-    └── Messaging/                   # RabbitMqOptions, RabbitMqConnectionFactory, SampleMessageConsumer
+│   ├── Extensions/                  # ConfigurationExtensions (env-var → IConfiguration mapping)
+│   ├── Messaging/                   # RabbitMqOptions, RabbitMqConnectionFactory, RabbitMqMessagePublisher
+│   └── DependencyInjection.cs       # AddInfrastructure() + AddInfrastructureMessaging()
+└── entrypoints/
+    ├── Web.API/                     # HTTP entrypoint — receives requests, can publish via IMessagePublisher
+    │   ├── Endpoints/               # One folder per feature, each file implements IEndpoint
+    │   ├── Extensions/              # EndpointExtensions, ResultExtensions, SecurityExtensions,
+    │   │                            # ServiceCollectionExtensions
+    │   ├── Infrastructure/          # CustomResults (ProblemDetails mapping)
+    │   ├── Middleware/              # GlobalExceptionHandlingMiddleware, RequestContextLoggingMiddleware,
+    │   │                            # SecurityHeadersMiddleware
+    │   ├── Program.cs               # Composition root
+    │   ├── DependencyInjection.cs   # AddPresentation()
+    │   ├── Dockerfile
+    │   ├── appsettings.json         # ⚠️ empty secrets — env vars supply them
+    │   └── appsettings.Development.json
+    ├── CronJobs/                    # BackgroundService + Cronos scheduler — internal polling, publishes events
+    │   ├── Jobs/                    # CronBackgroundService, SampleCronJob, SamplePollingJob (publish example)
+    │   └── Dockerfile
+    └── Worker/                      # RabbitMQ consumer — extend with one consumer per queue/topic
+        ├── Messaging/               # SampleMessageConsumer (uses Infra.Messaging primitives)
+        └── Dockerfile
 
 tests/
 ├── Domain.UnitTests/                # Pure domain tests
@@ -104,9 +113,9 @@ dotnet test tests/Application.UnitTests/Application.UnitTests.csproj   # unit on
 dotnet test --filter "FullyQualifiedName~<TestName>"                   # single test
 
 # run
-dotnet run --project src/Web.API
-dotnet run --project src/CronJobs
-dotnet run --project src/Worker
+dotnet run --project src/entrypoints/Web.API
+dotnet run --project src/entrypoints/CronJobs
+dotnet run --project src/entrypoints/Worker
 
 # local infra (postgres + rabbitmq + seq)
 docker compose up -d
@@ -114,10 +123,10 @@ docker compose up -d postgres rabbitmq seq     # infra only, run API from IDE
 
 # EF Core migrations
 dotnet ef migrations add <Name> \
-  --project src/Infra --startup-project src/Web.API \
+  --project src/Infra --startup-project src/entrypoints/Web.API \
   --output-dir Database/Migrations
 dotnet ef database update \
-  --project src/Infra --startup-project src/Web.API
+  --project src/Infra --startup-project src/entrypoints/Web.API
 
 # format / lint (SonarAnalyzer runs during build)
 dotnet format BaseProjectScaffold.sln
@@ -191,7 +200,7 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 
    **Handler must be `public sealed`** (architecture test enforces sealed; public so the endpoint can inject the interface it exposes).
 
-4. **Endpoint** — `src/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
+4. **Endpoint** — `src/entrypoints/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
 
    ```csharp
    using Application.Abstractions.Messaging;
@@ -351,13 +360,23 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
 
 ## 11. Background services
 
-### CronJobs (`src/CronJobs`)
+### Messaging (`src/Infra/Messaging`)
+
+Cross-cutting RabbitMQ infrastructure lives here so all three entrypoints share it:
+
+- `RabbitMqOptions` — bound from `RabbitMq:*` config (defaults to `sample.exchange` topic).
+- `RabbitMqConnectionFactory` — singleton, lazy-init, caches the `IConnection` for the process.
+- `RabbitMqMessagePublisher : IMessagePublisher` — opens an ephemeral channel per publish, declares the exchange (idempotent), serializes payload as persistent JSON.
+- Wire it in any entrypoint via `services.AddInfrastructureMessaging(configuration)`. The method validates that `Host` / `User` / `Password` / `ExchangeName` are present — startup fails fast otherwise.
+- Consumers (`BackgroundService`-derived classes) live in `src/entrypoints/Worker/Messaging/`. They resolve `RabbitMqConnectionFactory` from DI and create their own channel for `BasicConsumeAsync`.
+
+### CronJobs (`src/entrypoints/CronJobs`)
 
 - Inherit `CronBackgroundService` in `Jobs/CronBackgroundService.cs` and override `DoWorkAsync`.
 - Register in `Program.cs` with `builder.Services.AddHostedService<YourJob>()`.
 - Schedule comes from `CronJobs:<JobName>` config section parsed by Cronos.
 
-### Worker (`src/Worker`)
+### Worker (`src/entrypoints/Worker`)
 
 - Inherit `BackgroundService`. Example: `Messaging/SampleMessageConsumer.cs`.
 - Use the async RabbitMQ.Client 7.x API (`IChannel`, `BasicConsumeAsync`, `AsyncEventingBasicConsumer`).
@@ -404,7 +423,7 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
    - `src/Domain/SampleEntities/` → `src/Domain/<YourEntity>/`
    - `src/Application/SampleEntities/` → `src/Application/<YourEntity>/`
    - `src/Infra/Config/SampleEntityConfiguration.cs`
-   - Endpoints under `src/Web.API/Endpoints/SampleEntity/`
+   - Endpoints under `src/entrypoints/Web.API/Endpoints/SampleEntity/`
    - Tests in all three test projects
    - `IApplicationDbContext.SampleEntities` and `ApplicationDbContext.SampleEntities`
 3. Update `Jwt:Issuer` / `Jwt:Audience` defaults.

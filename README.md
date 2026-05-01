@@ -90,15 +90,15 @@ docker compose up -d
 
 ```bash
 docker compose up -d postgres rabbitmq seq
-dotnet run --project src/Web.API
+dotnet run --project src/entrypoints/Web.API
 # Swagger UI → https://localhost:xxxx/swagger
 ```
 
 ### Running the Workers
 
 ```bash
-dotnet run --project src/CronJobs      # cron-based background jobs
-dotnet run --project src/Worker        # RabbitMQ consumer
+dotnet run --project src/entrypoints/CronJobs      # cron-based background jobs
+dotnet run --project src/entrypoints/Worker        # RabbitMQ consumer
 ```
 
 ### EF Core migrations
@@ -107,13 +107,13 @@ dotnet run --project src/Worker        # RabbitMQ consumer
 # create a migration
 dotnet ef migrations add <Name> \
   --project src/Infra \
-  --startup-project src/Web.API \
+  --startup-project src/entrypoints/Web.API \
   --output-dir Database/Migrations
 
 # apply to db
 dotnet ef database update \
   --project src/Infra \
-  --startup-project src/Web.API
+  --startup-project src/entrypoints/Web.API
 ```
 
 ### Testing
@@ -192,7 +192,7 @@ flowchart LR
 1. Create command/query record in `src/Application/<Feature>/<Action>/`
 2. Create handler (`public sealed` + `ICommandHandler<T, TResp>` or `IQueryHandler<T, TResp>`)
 3. Create `AbstractValidator<T>` for validation (optional but recommended)
-4. Add endpoint in `src/Web.API/Endpoints/<Feature>/` implementing `IEndpoint`
+4. Add endpoint in `src/entrypoints/Web.API/Endpoints/<Feature>/` implementing `IEndpoint`
 5. Inject the **interface** (not the concrete handler) so the ValidationDecorator runs
 6. Write unit tests in `Application.UnitTests` + integration tests in `Web.API.IntegrationTests`
 
@@ -282,15 +282,15 @@ docker compose up -d
 
 ```bash
 docker compose up -d postgres rabbitmq seq
-dotnet run --project src/Web.API
+dotnet run --project src/entrypoints/Web.API
 # Swagger UI → https://localhost:xxxx/swagger
 ```
 
 ### Workers
 
 ```bash
-dotnet run --project src/CronJobs      # jobs em background (cron)
-dotnet run --project src/Worker        # consumer RabbitMQ
+dotnet run --project src/entrypoints/CronJobs      # jobs em background (cron)
+dotnet run --project src/entrypoints/Worker        # consumer RabbitMQ
 ```
 
 ### Migrations EF Core
@@ -299,13 +299,13 @@ dotnet run --project src/Worker        # consumer RabbitMQ
 # criar migration
 dotnet ef migrations add <Nome> \
   --project src/Infra \
-  --startup-project src/Web.API \
+  --startup-project src/entrypoints/Web.API \
   --output-dir Database/Migrations
 
 # aplicar no banco
 dotnet ef database update \
   --project src/Infra \
-  --startup-project src/Web.API
+  --startup-project src/entrypoints/Web.API
 ```
 
 ### Testes
@@ -384,7 +384,7 @@ flowchart LR
 1. Crie o command/query record em `src/Application/<Feature>/<Action>/`
 2. Crie o handler (`public sealed` + `ICommandHandler<T, TResp>` ou `IQueryHandler<T, TResp>`)
 3. Crie um `AbstractValidator<T>` (opcional, mas recomendado)
-4. Adicione um endpoint em `src/Web.API/Endpoints/<Feature>/` implementando `IEndpoint`
+4. Adicione um endpoint em `src/entrypoints/Web.API/Endpoints/<Feature>/` implementando `IEndpoint`
 5. Injete a **interface** (e não o handler concreto) para que o `ValidationDecorator` seja aplicado
 6. Escreva testes em `Application.UnitTests` e testes de integração em `Web.API.IntegrationTests`
 

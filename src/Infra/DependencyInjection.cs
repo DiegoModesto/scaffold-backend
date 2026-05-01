@@ -1,8 +1,10 @@
 using System.Text;
 using Application.Abstractions.Authentication;
 using Application.Abstractions.Data;
+using Application.Abstractions.Messaging;
 using Infra.Authentication;
 using Infra.Database;
+using Infra.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -88,6 +90,38 @@ public static class DependencyInjection
     private static IServiceCollection AddAuthorizationInternal(this IServiceCollection services)
     {
         services.AddAuthorization();
+        return services;
+    }
+
+    public static IServiceCollection AddInfrastructureMessaging(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        IConfigurationSection section = configuration.GetSection("RabbitMq");
+
+        if (!section.Exists())
+        {
+            throw new InvalidOperationException(
+                "RabbitMq configuration section is missing. "
+                + "Provide RabbitMq:Host, User, Password, ExchangeName via appsettings or RABBITMQ_* environment variables.");
+        }
+
+        var options = section.Get<RabbitMqOptions>() ?? new RabbitMqOptions();
+
+        if (string.IsNullOrWhiteSpace(options.Host)
+            || string.IsNullOrWhiteSpace(options.User)
+            || string.IsNullOrWhiteSpace(options.Password)
+            || string.IsNullOrWhiteSpace(options.ExchangeName))
+        {
+            throw new InvalidOperationException(
+                "RabbitMq:Host, RabbitMq:User, RabbitMq:Password and RabbitMq:ExchangeName must be configured. "
+                + "Set them via appsettings or RABBITMQ_HOST / RABBITMQ_USER / RABBITMQ_PASSWORD / RABBITMQ_EXCHANGE.");
+        }
+
+        services.Configure<RabbitMqOptions>(section);
+        services.AddSingleton<RabbitMqConnectionFactory>();
+        services.AddSingleton<IMessagePublisher, RabbitMqMessagePublisher>();
+
         return services;
     }
 }

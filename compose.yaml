@@ -7,13 +7,50 @@ services:
       - rabbitmq
     build:
       context: .
-      dockerfile: src/Web.API/Dockerfile
+      dockerfile: src/entrypoints/Web.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
     ports:
       - "5000:8080"
       - "5001:8081"
+
+  worker:
+    image: ${DOCKER_REGISTRY-}worker
+    container_name: base_scaffold_worker
+    depends_on:
+      - postgres
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: src/entrypoints/Worker/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
+      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+
+  cronjobs:
+    image: ${DOCKER_REGISTRY-}cronjobs
+    container_name: base_scaffold_cronjobs
+    depends_on:
+      - postgres
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: src/entrypoints/CronJobs/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
+      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
 
   postgres:
     image: postgres:17
