@@ -6,9 +6,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/entrypoints/Web.API/bin/Debug/net9.0/Web.API.dll",
+      "program": "${workspaceFolder}/src/EntryPoints/Web.API/bin/Debug/net10.0/Web.API.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/src/entrypoints/Web.API",
+      "cwd": "${workspaceFolder}/src/EntryPoints/Web.API",
       "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",
@@ -23,8 +23,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/entrypoints/CronJobs/bin/Debug/net9.0/CronJobs.dll",
-      "cwd": "${workspaceFolder}/src/entrypoints/CronJobs",
+      "program": "${workspaceFolder}/src/EntryPoints/CronJobs/bin/Debug/net10.0/CronJobs.dll",
+      "cwd": "${workspaceFolder}/src/EntryPoints/CronJobs",
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": { "DOTNET_ENVIRONMENT": "Development" }
@@ -34,8 +34,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/entrypoints/Worker/bin/Debug/net9.0/Worker.dll",
-      "cwd": "${workspaceFolder}/src/entrypoints/Worker",
+      "program": "${workspaceFolder}/src/EntryPoints/Worker/bin/Debug/net10.0/Worker.dll",
+      "cwd": "${workspaceFolder}/src/EntryPoints/Worker",
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": { "DOTNET_ENVIRONMENT": "Development" }

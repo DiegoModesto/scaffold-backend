@@ -29,7 +29,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: src/entrypoints/Web.API/Dockerfile
+        file: src/EntryPoints/Web.API/Dockerfile
         platforms: linux/amd64
         push: true
         tags: |

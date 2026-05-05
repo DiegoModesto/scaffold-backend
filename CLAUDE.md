@@ -12,8 +12,10 @@ This file is the **single source of truth for AI coding agents** (Claude Code, C
 
 - Solution file: `BaseProjectScaffold.sln`
 - Default branch: `main`
-- Target framework: `net9.0` (pinned by `global.json`)
+- Target framework: `net10.0` (pinned by `global.json`, SDK 10.0.203+)
 - Central Package Management: all versions live in `Directory.Packages.props`
+- NuGet packages restore into a repo-local `.nuget-cache/` folder (configured in `nuget.config`, gitignored). This avoids permission issues with the global `~/.nuget/packages/` cache and keeps installs reproducible per checkout. Delete the folder to force a clean restore.
+- Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler).
 
 ---
 
@@ -22,9 +24,10 @@ This file is the **single source of truth for AI coding agents** (Claude Code, C
 Clean Architecture with strict dependency direction. These rules are **enforced by `tests/Web.API.IntegrationTests/Architecture/ArchitectureTests.cs`** — breaking them breaks the build.
 
 ```
-Web.API ──► Infra ──► Application ──► Domain ──► SharedKernel
-CronJobs ──► Infra
-Worker   ──► Infra
+Web.API    ──► Infra ──► Application ──► Domain ──► SharedKernel
+Web.Blazor ──► Infra
+CronJobs   ──► Infra
+Worker     ──► Infra
 ```
 
 **Hard rules:**
@@ -37,7 +40,8 @@ Worker   ──► Infra
 | All `ICommandHandler<>` / `ICommandHandler<,>` / `IQueryHandler<,>` implementations must be `sealed` | Perf + clarity | NetArchTest |
 | All `IEndpoint` implementations must be `sealed` | Same | NetArchTest |
 | Endpoints inject the **handler interface**, never the concrete class | Otherwise the `ValidationDecorator` is bypassed | Manual (see §5) |
-| Concrete `IMessagePublisher` implementations must live in `Infra` (not `Application`/`Worker`/`CronJobs`/`Web.API`) | Multiple entrypoints share a single broker abstraction | NetArchTest |
+| Concrete `IMessagePublisher` implementations must live in `Infra` (not `Application`/`Worker`/`CronJobs`/`Web.API`/`Web.Blazor`) | Multiple entrypoints share a single broker abstraction | NetArchTest |
+| OpenTelemetry wiring lives in `Infra.Observability` and is consumed by every entrypoint via `AddOpenTelemetryObservability(...)` | One source of truth for traces/metrics across services | Manual |
 
 **If you need to break one of these rules, stop and justify it in a PR description — don't silently disable the test.**
 
@@ -67,8 +71,9 @@ src/
 │   ├── Database/                    # ApplicationDbContext, Schemas
 │   ├── Extensions/                  # ConfigurationExtensions (env-var → IConfiguration mapping)
 │   ├── Messaging/                   # RabbitMqOptions, RabbitMqConnectionFactory, RabbitMqMessagePublisher
+│   ├── Observability/               # OpenTelemetryExtensions (traces + metrics, OTLP exporter)
 │   └── DependencyInjection.cs       # AddInfrastructure() + AddInfrastructureMessaging()
-└── entrypoints/
+└── EntryPoints/
     ├── Web.API/                     # HTTP entrypoint — receives requests, can publish via IMessagePublisher
     │   ├── Endpoints/               # One folder per feature, each file implements IEndpoint
     │   ├── Extensions/              # EndpointExtensions, ResultExtensions, SecurityExtensions,
@@ -80,6 +85,13 @@ src/
     │   ├── DependencyInjection.cs   # AddPresentation()
     │   ├── Dockerfile
     │   ├── appsettings.json         # ⚠️ empty secrets — env vars supply them
+    │   └── appsettings.Development.json
+    ├── Web.Blazor/                  # Blazor Server (interactive server components) — same Infra/Application stack as Web.API
+    │   ├── Components/              # Razor components (App, Routes, Layout, Pages)
+    │   ├── wwwroot/                 # Static assets
+    │   ├── Program.cs               # Composition root (uses AddInfrastructure + AddOpenTelemetryObservability)
+    │   ├── Dockerfile
+    │   ├── appsettings.json
     │   └── appsettings.Development.json
     ├── CronJobs/                    # BackgroundService + Cronos scheduler — internal polling, publishes events
     │   ├── Jobs/                    # CronBackgroundService, SampleCronJob, SamplePollingJob (publish example)
@@ -108,14 +120,15 @@ tests/
 # build / test
 dotnet restore
 dotnet build BaseProjectScaffold.sln
-dotnet test BaseProjectScaffold.sln                                    # all 30+ tests
+dotnet test BaseProjectScaffold.sln                                    # 35+ tests across 3 suites
 dotnet test tests/Application.UnitTests/Application.UnitTests.csproj   # unit only
 dotnet test --filter "FullyQualifiedName~<TestName>"                   # single test
 
 # run
-dotnet run --project src/entrypoints/Web.API
-dotnet run --project src/entrypoints/CronJobs
-dotnet run --project src/entrypoints/Worker
+dotnet run --project src/EntryPoints/Web.API
+dotnet run --project src/EntryPoints/Web.Blazor
+dotnet run --project src/EntryPoints/CronJobs
+dotnet run --project src/EntryPoints/Worker
 
 # local infra (postgres + rabbitmq + seq)
 docker compose up -d
@@ -123,10 +136,10 @@ docker compose up -d postgres rabbitmq seq     # infra only, run API from IDE
 
 # EF Core migrations
 dotnet ef migrations add <Name> \
-  --project src/Infra --startup-project src/entrypoints/Web.API \
+  --project src/Infra --startup-project src/EntryPoints/Web.API \
   --output-dir Database/Migrations
 dotnet ef database update \
-  --project src/Infra --startup-project src/entrypoints/Web.API
+  --project src/Infra --startup-project src/EntryPoints/Web.API
 
 # format / lint (SonarAnalyzer runs during build)
 dotnet format BaseProjectScaffold.sln
@@ -200,7 +213,7 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 
    **Handler must be `public sealed`** (architecture test enforces sealed; public so the endpoint can inject the interface it exposes).
 
-4. **Endpoint** — `src/entrypoints/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
+4. **Endpoint** — `src/EntryPoints/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
 
    ```csharp
    using Application.Abstractions.Messaging;
@@ -362,25 +375,62 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
 
 ### Messaging (`src/Infra/Messaging`)
 
-Cross-cutting RabbitMQ infrastructure lives here so all three entrypoints share it:
+Cross-cutting RabbitMQ infrastructure lives here so all four entrypoints share it:
 
 - `RabbitMqOptions` — bound from `RabbitMq:*` config (defaults to `sample.exchange` topic).
 - `RabbitMqConnectionFactory` — singleton, lazy-init, caches the `IConnection` for the process.
 - `RabbitMqMessagePublisher : IMessagePublisher` — opens an ephemeral channel per publish, declares the exchange (idempotent), serializes payload as persistent JSON.
 - Wire it in any entrypoint via `services.AddInfrastructureMessaging(configuration)`. The method validates that `Host` / `User` / `Password` / `ExchangeName` are present — startup fails fast otherwise.
-- Consumers (`BackgroundService`-derived classes) live in `src/entrypoints/Worker/Messaging/`. They resolve `RabbitMqConnectionFactory` from DI and create their own channel for `BasicConsumeAsync`.
+- Consumers (`BackgroundService`-derived classes) live in `src/EntryPoints/Worker/Messaging/`. They resolve `RabbitMqConnectionFactory` from DI and create their own channel for `BasicConsumeAsync`.
 
-### CronJobs (`src/entrypoints/CronJobs`)
+### CronJobs (`src/EntryPoints/CronJobs`)
 
 - Inherit `CronBackgroundService` in `Jobs/CronBackgroundService.cs` and override `DoWorkAsync`.
 - Register in `Program.cs` with `builder.Services.AddHostedService<YourJob>()`.
 - Schedule comes from `CronJobs:<JobName>` config section parsed by Cronos.
 
-### Worker (`src/entrypoints/Worker`)
+### Worker (`src/EntryPoints/Worker`)
 
 - Inherit `BackgroundService`. Example: `Messaging/SampleMessageConsumer.cs`.
 - Use the async RabbitMQ.Client 7.x API (`IChannel`, `BasicConsumeAsync`, `AsyncEventingBasicConsumer`).
 - Connection config lives in `RabbitMqOptions` bound from `RabbitMq:*` config.
+
+### Web.Blazor (`src/EntryPoints/Web.Blazor`)
+
+- Blazor Server with Interactive Server render mode (`AddInteractiveServerComponents` + `AddInteractiveServerRenderMode`).
+- References `Application` and `Infra` directly so razor components can inject `ICommandHandler<,>` / `IQueryHandler<,>` and dispatch through the same validation pipeline as Web.API.
+- Razor components must inject the **handler interface**, never the concrete class — same rule as endpoints (§5.1 step 4).
+- Auth/session is up to you; the scaffold wires `AddInfrastructure` (which adds JWT bearer) for parity but you may swap to cookie auth for an interactive UI.
+
+---
+
+## 11.bis Observability — OpenTelemetry
+
+`src/Infra/Observability/OpenTelemetryExtensions.cs` exposes a single composition entrypoint:
+
+```csharp
+services.AddOpenTelemetryObservability(
+    configuration,
+    serviceName: "Web.API",          // becomes service.name resource attribute
+    includeAspNetCore: true);        // false for Worker / CronJobs (no HTTP server)
+```
+
+What's wired:
+
+- **Tracing**: `AddSource(serviceName)`, EF Core (`Microsoft.EntityFrameworkCore` ActivitySource), Npgsql (`Npgsql.OpenTelemetry`), `HttpClient`. `AspNetCore` instrumentation only when `includeAspNetCore: true`.
+- **Metrics**: process / runtime / `HttpClient`. `AspNetCore` metrics only when `includeAspNetCore: true`.
+- **Exporter**: OTLP, enabled when `OpenTelemetry:OtlpEndpoint` (or env var `OTEL_EXPORTER_OTLP_ENDPOINT`) is set. No exporter ⇒ providers register but emit nowhere — useful for dev.
+
+Add a service-specific `ActivitySource`:
+
+```csharp
+private static readonly ActivitySource Source = new("Web.API");
+using Activity? activity = Source.StartActivity("CreateSampleEntity");
+```
+
+Custom sources need to be registered with `tracing.AddSource("YourSource")` — extend `OpenTelemetryExtensions` if the source is shared across services.
+
+Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317`. Or run Jaeger / Aspire dashboard / Seq with the OTLP receiver.
 
 ---
 
@@ -417,13 +467,14 @@ Cross-cutting RabbitMQ infrastructure lives here so all three entrypoints share 
 
 1. Replace `BaseProjectScaffold` with your project name in:
    - `BaseProjectScaffold.sln`
-   - `CronJobs.csproj` `<UserSecretsId>` and `<AssemblyName>`
+   - `CronJobs.csproj` and `Web.Blazor.csproj` `<UserSecretsId>` and `<AssemblyName>`
    - `README.md`
+   - Drop entrypoints you don't need (e.g. delete `Web.Blazor` if API-only) and remove their `compose.yaml` services + Dockerfile path references.
 2. Replace `SampleEntity` / `SampleEntities` with your first real aggregate:
    - `src/Domain/SampleEntities/` → `src/Domain/<YourEntity>/`
    - `src/Application/SampleEntities/` → `src/Application/<YourEntity>/`
    - `src/Infra/Config/SampleEntityConfiguration.cs`
-   - Endpoints under `src/entrypoints/Web.API/Endpoints/SampleEntity/`
+   - Endpoints under `src/EntryPoints/Web.API/Endpoints/SampleEntity/`
    - Tests in all three test projects
    - `IApplicationDbContext.SampleEntities` and `ApplicationDbContext.SampleEntities`
 3. Update `Jwt:Issuer` / `Jwt:Audience` defaults.
