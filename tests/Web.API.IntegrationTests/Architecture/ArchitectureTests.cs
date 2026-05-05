@@ -95,4 +95,20 @@ public class ArchitectureTests
             .Should().BeSealed().GetResult();
         result.IsSuccessful.ShouldBeTrue();
     }
+
+    [Fact]
+    public void MessagePublisher_Implementations_Should_LiveInInfraAssembly()
+    {
+        // The IMessagePublisher contract belongs to Application; concrete brokers (RabbitMQ etc.)
+        // must live in Infra so other entrypoints can publish without taking a Worker dependency.
+        var applicationImplementations = Types.InAssembly(ApplicationAssembly)
+            .That().ImplementInterface(typeof(IMessagePublisher))
+            .GetTypes();
+        applicationImplementations.ShouldBeEmpty();
+
+        var infraImplementations = Types.InAssembly(InfraAssembly)
+            .That().ImplementInterface(typeof(IMessagePublisher))
+            .GetTypes();
+        infraImplementations.ShouldNotBeEmpty();
+    }
 }

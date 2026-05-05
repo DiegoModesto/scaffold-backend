@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Abstractions.Data;
+using Application.Abstractions.Messaging;
 using Infra.Database;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -20,6 +21,8 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     private readonly string _dbName = $"IntegrationTestDb_{Guid.NewGuid()}";
 
+    public FakeMessagePublisher MessagePublisher { get; } = new();
+
     public CustomWebApplicationFactory()
     {
         Environment.SetEnvironmentVariable(
@@ -28,6 +31,9 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("JWT_SECRET", TestJwtSecret);
         Environment.SetEnvironmentVariable("JWT_ISSUER", TestIssuer);
         Environment.SetEnvironmentVariable("JWT_AUDIENCE", TestAudience);
+        Environment.SetEnvironmentVariable("RABBITMQ_HOST", "localhost");
+        Environment.SetEnvironmentVariable("RABBITMQ_USER", "test");
+        Environment.SetEnvironmentVariable("RABBITMQ_PASSWORD", "test");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -44,7 +50,13 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:ExpirationInMinutes"] = "60",
                 ["Jwt:RequireHttpsMetadata"] = "false",
                 ["ConnectionStrings:Database"] =
-                    "Host=localhost;Port=5432;Database=test;Username=test;Password=test;"
+                    "Host=localhost;Port=5432;Database=test;Username=test;Password=test;",
+                ["RabbitMq:Host"] = "localhost",
+                ["RabbitMq:User"] = "test",
+                ["RabbitMq:Password"] = "test",
+                ["RabbitMq:ExchangeName"] = "test.exchange",
+                ["RabbitMq:QueueName"] = "test.queue",
+                ["RabbitMq:RoutingKey"] = "test.key"
             });
         });
 
@@ -63,6 +75,15 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseInMemoryDatabase(_dbName));
+
+            ServiceDescriptor? publisherDescriptor = services
+                .FirstOrDefault(d => d.ServiceType == typeof(IMessagePublisher));
+            if (publisherDescriptor is not null)
+            {
+                services.Remove(publisherDescriptor);
+            }
+
+            services.AddSingleton<IMessagePublisher>(MessagePublisher);
         });
     }
 
