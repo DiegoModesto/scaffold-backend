@@ -402,6 +402,7 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
                 {
                     OpenIddictConstants.Permissions.Endpoints.Token,
                     OpenIddictConstants.Permissions.Endpoints.Introspection,
+                    OpenIddictConstants.Permissions.Endpoints.Revocation,
                     OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
                 },
             };
