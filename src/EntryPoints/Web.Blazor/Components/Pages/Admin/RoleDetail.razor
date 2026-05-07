@@ -1,0 +1,171 @@
+@page "/admin/roles/{Id:guid}"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Role detail</PageTitle>
+
+<PermissionView Permission="roles.read">
+    <MudButton Href="/admin/roles" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-3">Back to roles</MudButton>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_role is null)
+    {
+        <MudAlert Severity="Severity.Warning">Role not found.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h5">@_role.Name</MudText></CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField @bind-Value="_editName" Label="Name" Disabled="@(!_editing)" />
+                        <MudTextField @bind-Value="_editDescription" Label="Description" Lines="3" Disabled="@(!_editing)" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <PermissionView Permission="roles.write">
+                            @if (!_editing)
+                            {
+                                <MudButton OnClick="@(() => _editing = true)" Variant="Variant.Outlined">Edit</MudButton>
+                                <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="DeleteAsync">Delete</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">Save</MudButton>
+                                <MudButton OnClick="CancelEdit">Cancel</MudButton>
+                            }
+                        </PermissionView>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Permissions</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="roles.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAssignPermission">Assign</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_role.AssignedPermissions.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">No permissions assigned.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="PermissionRef" Dense="true">
+                                @foreach (PermissionRef p in _role.AssignedPermissions)
+                                {
+                                    <MudListItem T="PermissionRef" Value="p">
+                                        @p.Code
+                                        <PermissionView Permission="roles.write">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                           OnClick="@(() => RevokeAsync(p.Id))" />
+                                        </PermissionView>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private RoleDetailResponse? _role;
+    private bool _loading = true;
+    private bool _editing;
+    private string? _error;
+
+    private string _editName = "";
+    private string _editDescription = "";
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _role = await Client.GetRoleAsync(Id, CancellationToken.None);
+            if (_role is not null)
+            {
+                _editName = _role.Name;
+                _editDescription = _role.Description;
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private void CancelEdit()
+    {
+        _editing = false;
+        if (_role is not null)
+        {
+            _editName = _role.Name;
+            _editDescription = _role.Description;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await Client.UpdateRoleAsync(Id, _editName, _editDescription, CancellationToken.None);
+            Snackbar.Add("Role updated.", Severity.Success);
+            _editing = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Delete role", "Are you sure?", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true) return;
+        try
+        {
+            await Client.DeleteRoleAsync(Id, CancellationToken.None);
+            Snackbar.Add("Role deleted.", Severity.Success);
+            Nav.NavigateTo("/admin/roles");
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task OpenAssignPermission()
+    {
+        var parameters = new DialogParameters { ["RoleId"] = Id };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AssignPermissionDialog>("Assign permission", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+
+    private async Task RevokeAsync(Guid permissionId)
+    {
+        try { await Client.RevokePermissionFromRoleAsync(Id, permissionId, CancellationToken.None); Snackbar.Add("Permission revoked.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}
