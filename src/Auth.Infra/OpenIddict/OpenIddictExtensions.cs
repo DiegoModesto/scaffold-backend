@@ -40,6 +40,12 @@ public static class OpenIddictExtensions
                  .SetRevocationEndpointUris("/connect/revocation")
                  .SetEndSessionEndpointUris("/connect/logout");
 
+                string? issuer = configuration["OpenIddict:Issuer"];
+                if (!string.IsNullOrWhiteSpace(issuer))
+                {
+                    o.SetIssuer(new Uri(issuer));
+                }
+
                 o.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange()
                  .AllowRefreshTokenFlow()
                  .AllowClientCredentialsFlow();
