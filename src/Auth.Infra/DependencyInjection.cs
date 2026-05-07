@@ -66,6 +66,9 @@ public static class DependencyInjection
 
         services.Configure<Auth.Infra.NetSuite.NetSuiteSamlOptions>(
             configuration.GetSection(Auth.Infra.NetSuite.NetSuiteSamlOptions.SectionName));
+        services.AddScoped<
+            Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner,
+            Auth.Infra.NetSuite.NetSuiteSamlSigner>();
 
         return services;
     }
