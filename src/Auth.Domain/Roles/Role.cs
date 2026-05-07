@@ -32,4 +32,16 @@ public sealed class Role : Entity
     public void AssignPermission(Guid permissionId) => _permissionIds.Add(permissionId);
 
     public void RevokePermission(Guid permissionId) => _permissionIds.Remove(permissionId);
+
+    public void UpdateDetails(string name, string description)
+    {
+        Name = name;
+        Description = description;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
+    }
 }
