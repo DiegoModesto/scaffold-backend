@@ -28,6 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Application.UnitTests" />
+    <InternalsVisibleTo Include="Web.API.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Database\Migrations\" />
     <Folder Include="Migrations\" />
   </ItemGroup>
