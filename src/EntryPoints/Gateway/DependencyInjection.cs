@@ -79,4 +79,20 @@ internal static class DependencyInjection
 
         return services;
     }
+
+    public static IServiceCollection AddGatewayHealthChecks(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddHttpClient("auth-health", c => c.Timeout = TimeSpan.FromSeconds(2));
+
+        var redisConn = configuration["Redis:ConnectionString"]
+            ?? throw new InvalidOperationException("Redis:ConnectionString is required.");
+
+        services.AddHealthChecks()
+            .AddRedis(redisConn, name: "redis", tags: ["ready"])
+            .AddCheck<HealthChecks.AuthApiHealthCheck>("auth-api", tags: ["ready"]);
+
+        return services;
+    }
 }
