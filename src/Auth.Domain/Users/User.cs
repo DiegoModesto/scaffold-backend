@@ -4,8 +4,8 @@ namespace Auth.Domain.Users;
 
 public sealed class User : Entity
 {
-    private readonly HashSet<Guid> _roleIds = [];
-    private readonly HashSet<Guid> _groupIds = [];
+    private readonly List<Guid> _roleIds = [];
+    private readonly List<Guid> _groupIds = [];
 
     private User()
     {
@@ -70,11 +70,23 @@ public sealed class User : Entity
 
     public void RecordLogin() => LastLoginAt = DateTimeOffset.UtcNow;
 
-    public void AssignRole(Guid roleId) => _roleIds.Add(roleId);
+    public void AssignRole(Guid roleId)
+    {
+        if (!_roleIds.Contains(roleId))
+        {
+            _roleIds.Add(roleId);
+        }
+    }
 
     public void RevokeRole(Guid roleId) => _roleIds.Remove(roleId);
 
-    public void AddToGroup(Guid groupId) => _groupIds.Add(groupId);
+    public void AddToGroup(Guid groupId)
+    {
+        if (!_groupIds.Contains(groupId))
+        {
+            _groupIds.Add(groupId);
+        }
+    }
 
     public void RemoveFromGroup(Guid groupId) => _groupIds.Remove(groupId);
 }

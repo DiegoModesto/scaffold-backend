@@ -4,7 +4,7 @@ namespace Auth.Domain.Roles;
 
 public sealed class Role : Entity
 {
-    private readonly HashSet<Guid> _permissionIds = [];
+    private readonly List<Guid> _permissionIds = [];
 
     private Role()
     {
@@ -29,7 +29,13 @@ public sealed class Role : Entity
         };
     }
 
-    public void AssignPermission(Guid permissionId) => _permissionIds.Add(permissionId);
+    public void AssignPermission(Guid permissionId)
+    {
+        if (!_permissionIds.Contains(permissionId))
+        {
+            _permissionIds.Add(permissionId);
+        }
+    }
 
     public void RevokePermission(Guid permissionId) => _permissionIds.Remove(permissionId);
 }

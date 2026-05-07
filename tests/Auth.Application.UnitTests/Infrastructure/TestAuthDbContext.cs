@@ -6,7 +6,9 @@ using Auth.Domain.Permissions;
 using Auth.Domain.Roles;
 using Auth.Domain.Tenants;
 using Auth.Domain.Users;
+using Auth.Infra.Database;
 using Microsoft.EntityFrameworkCore;
+using SharedKernel;
 
 namespace Auth.Application.UnitTests.Infrastructure;
 
@@ -20,6 +22,15 @@ public sealed class TestAuthDbContext(DbContextOptions<TestAuthDbContext> option
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<M2MClient> M2MClients => Set<M2MClient>();
     public DbSet<AuthAuditEvent> AuditEvents => Set<AuthAuditEvent>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Ignore<ErrorType>();
+
+        // Reuse the production EF configurations so the in-memory model honours
+        // the same primitive collection mappings (RoleIds / GroupIds / PermissionIds).
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
+    }
 
     public static TestAuthDbContext Create() =>
         new(new DbContextOptionsBuilder<TestAuthDbContext>()

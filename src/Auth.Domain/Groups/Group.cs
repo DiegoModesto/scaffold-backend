@@ -4,7 +4,7 @@ namespace Auth.Domain.Groups;
 
 public sealed class Group : Entity
 {
-    private readonly HashSet<Guid> _roleIds = [];
+    private readonly List<Guid> _roleIds = [];
 
     private Group()
     {
@@ -34,7 +34,13 @@ public sealed class Group : Entity
 
     public void UnlinkEntraGroup() => EntraGroupId = null;
 
-    public void AssignRole(Guid roleId) => _roleIds.Add(roleId);
+    public void AssignRole(Guid roleId)
+    {
+        if (!_roleIds.Contains(roleId))
+        {
+            _roleIds.Add(roleId);
+        }
+    }
 
     public void RevokeRole(Guid roleId) => _roleIds.Remove(roleId);
 }

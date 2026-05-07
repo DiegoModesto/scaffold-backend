@@ -22,7 +22,7 @@ internal sealed class GroupConfiguration : AbstractAuthConfiguration<Group>
         builder.HasIndex(g => new { g.TenantId, g.Name }).IsUnique();
         builder.HasIndex(g => g.EntraGroupId).HasFilter("\"entra_group_id\" IS NOT NULL");
 
-        builder.PrimitiveCollection<HashSet<Guid>>("_roleIds")
+        builder.PrimitiveCollection<List<Guid>>("_roleIds")
             .HasField("_roleIds")
             .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnName("role_ids");

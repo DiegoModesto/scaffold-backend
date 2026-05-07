@@ -27,12 +27,12 @@ internal sealed class UserConfiguration : AbstractAuthConfiguration<User>
             .IsUnique()
             .HasFilter("\"entra_oid\" IS NOT NULL");
 
-        builder.PrimitiveCollection<HashSet<Guid>>("_roleIds")
+        builder.PrimitiveCollection<List<Guid>>("_roleIds")
             .HasField("_roleIds")
             .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnName("role_ids");
 
-        builder.PrimitiveCollection<HashSet<Guid>>("_groupIds")
+        builder.PrimitiveCollection<List<Guid>>("_groupIds")
             .HasField("_groupIds")
             .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnName("group_ids");
