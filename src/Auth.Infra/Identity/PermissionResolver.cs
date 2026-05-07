@@ -1,49 +1,54 @@
-using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
-using Auth.Domain.Groups;
-using Auth.Domain.Roles;
 using Auth.Domain.Users;
+using Auth.Infra.Database;
 using Microsoft.EntityFrameworkCore;
+using SharedKernel;
 
 namespace Auth.Infra.Identity;
 
-internal sealed class PermissionResolver(IAuthDbContext db) : IPermissionResolver
+internal sealed class PermissionResolver(AuthDbContext db) : IPermissionResolver
 {
-    public async Task<IReadOnlyCollection<string>> ResolveAsync(
+    public async Task<Result<IReadOnlyCollection<string>>> ResolveAsync(
         Guid tenantId,
         Guid userId,
         CancellationToken cancellationToken)
     {
-        User? user = await db.Users
-            .FirstOrDefaultAsync(
+        bool userExists = await db.Users
+            .AnyAsync(
                 u => u.TenantId == tenantId && u.Id == userId && u.IsActive,
-                cancellationToken);
+                cancellationToken)
+            .ConfigureAwait(false);
 
-        if (user is null)
+        if (!userExists)
         {
-            return Array.Empty<string>();
+            return Result.Failure<IReadOnlyCollection<string>>(UserErrors.NotFound(userId));
         }
 
-        var directRoleIds = user.RoleIds.ToList();
-        var groupIds = user.GroupIds.ToList();
+        var directRoleIds = db.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId);
 
-        List<Group> groups = await db.Groups
-            .Where(g => groupIds.Contains(g.Id))
-            .ToListAsync(cancellationToken);
+        var groupIds = db.UserGroups
+            .Where(ug => ug.UserId == userId)
+            .Select(ug => ug.GroupId);
 
-        List<Guid> groupRoleIds = groups.SelectMany(g => g.RoleIds).Distinct().ToList();
+        var groupRoleIds = db.GroupRoles
+            .Where(gr => groupIds.Contains(gr.GroupId))
+            .Select(gr => gr.RoleId);
 
-        var allRoleIds = directRoleIds.Union(groupRoleIds).Distinct().ToList();
+        var allRoleIds = directRoleIds.Union(groupRoleIds).Distinct();
 
-        List<Role> roles = await db.Roles
-            .Where(r => allRoleIds.Contains(r.Id))
-            .ToListAsync(cancellationToken);
+        var permissionIds = db.RolePermissions
+            .Where(rp => allRoleIds.Contains(rp.RoleId))
+            .Select(rp => rp.PermissionId)
+            .Distinct();
 
-        List<Guid> permissionIds = roles.SelectMany(r => r.PermissionIds).Distinct().ToList();
-
-        return await db.Permissions
+        List<string> codes = await db.Permissions
             .Where(p => permissionIds.Contains(p.Id))
             .Select(p => p.Code)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Success<IReadOnlyCollection<string>>(codes);
     }
 }

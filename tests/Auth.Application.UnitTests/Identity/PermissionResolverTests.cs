@@ -3,6 +3,7 @@ using Auth.Domain.Groups;
 using Auth.Domain.Permissions;
 using Auth.Domain.Roles;
 using Auth.Domain.Users;
+using Auth.Infra.Database;
 using Auth.Infra.Identity;
 using Shouldly;
 
@@ -11,9 +12,40 @@ namespace Auth.Application.UnitTests.Identity;
 public sealed class PermissionResolverTests
 {
     [Fact]
+    public async Task Should_FailNotFound_WhenUserMissing()
+    {
+        await using AuthDbContext db = TestAuthDbContext.CreateProduction();
+
+        var resolver = new PermissionResolver(db);
+
+        var result = await resolver.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe("User.NotFound");
+    }
+
+    [Fact]
+    public async Task Should_FailNotFound_WhenUserDisabled()
+    {
+        await using AuthDbContext db = TestAuthDbContext.CreateProduction();
+        Guid tenantId = Guid.NewGuid();
+        User user = User.ProvisionFromEntra(tenantId, Guid.NewGuid(), "a@b.com", "A");
+        user.Disable();
+        db.Users.Add(user);
+        await db.SaveChangesAsync(CancellationToken.None);
+
+        var resolver = new PermissionResolver(db);
+
+        var result = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe("User.NotFound");
+    }
+
+    [Fact]
     public async Task Should_ReturnPermissionsFromDirectRolesOnly()
     {
-        await using TestAuthDbContext db = TestAuthDbContext.Create();
+        await using AuthDbContext db = TestAuthDbContext.CreateProduction();
         Guid tenantId = Guid.NewGuid();
 
         Permission read = Permission.Create("orders.read", "Read orders");
@@ -31,15 +63,16 @@ public sealed class PermissionResolverTests
 
         var resolver = new PermissionResolver(db);
 
-        var permissions = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
+        var result = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
 
-        permissions.ShouldBe(new[] { "orders.read" });
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.ShouldBe(new[] { "orders.read" });
     }
 
     [Fact]
     public async Task Should_ReturnPermissionsFromGroupRolesOnly()
     {
-        await using TestAuthDbContext db = TestAuthDbContext.Create();
+        await using AuthDbContext db = TestAuthDbContext.CreateProduction();
         Guid tenantId = Guid.NewGuid();
 
         Permission write = Permission.Create("orders.write", "Write orders");
@@ -61,15 +94,16 @@ public sealed class PermissionResolverTests
 
         var resolver = new PermissionResolver(db);
 
-        var permissions = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
+        var result = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
 
-        permissions.ShouldBe(new[] { "orders.write" });
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.ShouldBe(new[] { "orders.write" });
     }
 
     [Fact]
     public async Task Should_DeduplicatePermissionsFromBothSources()
     {
-        await using TestAuthDbContext db = TestAuthDbContext.Create();
+        await using AuthDbContext db = TestAuthDbContext.CreateProduction();
         Guid tenantId = Guid.NewGuid();
 
         Permission read = Permission.Create("orders.read", "Read orders");
@@ -97,10 +131,11 @@ public sealed class PermissionResolverTests
 
         var resolver = new PermissionResolver(db);
 
-        var permissions = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
+        var result = await resolver.ResolveAsync(tenantId, user.Id, CancellationToken.None);
 
-        permissions.Count.ShouldBe(2);
-        permissions.ShouldContain("orders.read");
-        permissions.ShouldContain("orders.write");
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Count.ShouldBe(2);
+        result.Value.ShouldContain("orders.read");
+        result.Value.ShouldContain("orders.write");
     }
 }

@@ -1,6 +1,11 @@
+using SharedKernel;
+
 namespace Auth.Application.Abstractions.Identity;
 
 public interface IPermissionResolver
 {
-    Task<IReadOnlyCollection<string>> ResolveAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<string>>> ResolveAsync(
+        Guid tenantId,
+        Guid userId,
+        CancellationToken cancellationToken);
 }

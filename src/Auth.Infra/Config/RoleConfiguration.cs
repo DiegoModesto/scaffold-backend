@@ -21,11 +21,9 @@ internal sealed class RoleConfiguration : AbstractAuthConfiguration<Role>
 
         builder.HasIndex(r => new { r.TenantId, r.Name }).IsUnique();
 
-        builder.PrimitiveCollection<List<Guid>>("_permissionIds")
-            .HasField("_permissionIds")
-            .UsePropertyAccessMode(PropertyAccessMode.Field)
-            .HasColumnName("permission_ids");
-
+        // Permission membership persists via the role_permissions join table.
+        // Reconciliation between Role._permissionIds and join rows happens in
+        // AuthDbContext.SaveChangesAsync.
         builder.Ignore(r => r.PermissionIds);
     }
 }

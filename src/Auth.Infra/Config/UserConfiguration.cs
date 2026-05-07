@@ -27,16 +27,10 @@ internal sealed class UserConfiguration : AbstractAuthConfiguration<User>
             .IsUnique()
             .HasFilter("\"entra_oid\" IS NOT NULL");
 
-        builder.PrimitiveCollection<List<Guid>>("_roleIds")
-            .HasField("_roleIds")
-            .UsePropertyAccessMode(PropertyAccessMode.Field)
-            .HasColumnName("role_ids");
-
-        builder.PrimitiveCollection<List<Guid>>("_groupIds")
-            .HasField("_groupIds")
-            .UsePropertyAccessMode(PropertyAccessMode.Field)
-            .HasColumnName("group_ids");
-
+        // Role/group memberships persist via explicit join tables (user_roles, user_groups).
+        // The in-memory _roleIds / _groupIds HashSets are reconciled to those join tables
+        // by AuthDbContext.SaveChangesAsync — see ReconcileMembershipsAsync. The backing
+        // fields themselves are NOT mapped to columns on the users table.
         builder.Ignore(u => u.RoleIds);
         builder.Ignore(u => u.GroupIds);
     }

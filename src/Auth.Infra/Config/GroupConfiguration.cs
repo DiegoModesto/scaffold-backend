@@ -22,11 +22,9 @@ internal sealed class GroupConfiguration : AbstractAuthConfiguration<Group>
         builder.HasIndex(g => new { g.TenantId, g.Name }).IsUnique();
         builder.HasIndex(g => g.EntraGroupId).HasFilter("\"entra_group_id\" IS NOT NULL");
 
-        builder.PrimitiveCollection<List<Guid>>("_roleIds")
-            .HasField("_roleIds")
-            .UsePropertyAccessMode(PropertyAccessMode.Field)
-            .HasColumnName("role_ids");
-
+        // Role membership persists via the group_roles join table.
+        // Reconciliation between Group._roleIds and join rows happens in
+        // AuthDbContext.SaveChangesAsync.
         builder.Ignore(g => g.RoleIds);
     }
 }
