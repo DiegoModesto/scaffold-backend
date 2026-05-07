@@ -16,7 +16,8 @@ builder.Services.AddOpenTelemetryObservability(
 builder.Services.AddGatewayAuthentication(builder.Configuration);
 
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms<Gateway.Authentication.ForwardedIdentityTransform>();
 
 var app = builder.Build();
 
