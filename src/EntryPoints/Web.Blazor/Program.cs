@@ -1,5 +1,6 @@
 using Infra.Observability;
 using Microsoft.AspNetCore.Authentication;
+using MudBlazor.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Serilog;
 using StackExchange.Redis;
@@ -37,6 +38,8 @@ builder.Services.AddSingleton<ITokenStore, RedisTokenStore>();
 
 builder.Services.AddBffAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddMudServices();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<IAdminGatewayClient, AdminGatewayClient>(c =>

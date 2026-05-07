@@ -1,30 +1,27 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Web.Blazor</a>
-    </div>
-</div>
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <PermissionView Permission="users.read">
+        <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Users</MudNavLink>
+    </PermissionView>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+    <PermissionView Permission="groups.read">
+        <MudNavLink Href="/admin/groups" Icon="@Icons.Material.Filled.Group">Groups</MudNavLink>
+    </PermissionView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+    <PermissionView Permission="roles.read">
+        <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.AdminPanelSettings">Roles</MudNavLink>
+    </PermissionView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+    <PermissionView Permission="permissions.read">
+        <MudNavLink Href="/admin/permissions" Icon="@Icons.Material.Filled.Lock">Permissions</MudNavLink>
+    </PermissionView>
 
+    <PermissionView Permission="m2m.read">
+        <MudNavLink Href="/admin/m2m-clients" Icon="@Icons.Material.Filled.Api">M2M Clients</MudNavLink>
+    </PermissionView>
+
+    <PermissionView Permission="audit.read">
+        <MudNavLink Href="/admin/audit" Icon="@Icons.Material.Filled.History">Audit Log</MudNavLink>
+    </PermissionView>
+</MudNavMenu>
