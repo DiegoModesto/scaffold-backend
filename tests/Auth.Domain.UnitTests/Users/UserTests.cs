@@ -58,4 +58,54 @@ public sealed class UserTests
 
         user.IsActive.ShouldBeFalse();
     }
+
+    [Fact]
+    public void AssignRole_ShouldBeIdempotent()
+    {
+        User user = User.ProvisionFromEntra(Guid.NewGuid(), Guid.NewGuid(), "a@b.com", "A");
+        Guid roleId = Guid.NewGuid();
+
+        user.AssignRole(roleId);
+        user.AssignRole(roleId);
+
+        user.RoleIds.Count.ShouldBe(1);
+        user.RoleIds.ShouldContain(roleId);
+    }
+
+    [Fact]
+    public void RevokeRole_ShouldRemoveRole()
+    {
+        User user = User.ProvisionFromEntra(Guid.NewGuid(), Guid.NewGuid(), "a@b.com", "A");
+        Guid roleId = Guid.NewGuid();
+        user.AssignRole(roleId);
+
+        user.RevokeRole(roleId);
+
+        user.RoleIds.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AddToGroup_ShouldBeIdempotent()
+    {
+        User user = User.ProvisionFromEntra(Guid.NewGuid(), Guid.NewGuid(), "a@b.com", "A");
+        Guid groupId = Guid.NewGuid();
+
+        user.AddToGroup(groupId);
+        user.AddToGroup(groupId);
+
+        user.GroupIds.Count.ShouldBe(1);
+        user.GroupIds.ShouldContain(groupId);
+    }
+
+    [Fact]
+    public void RemoveFromGroup_ShouldRemoveGroup()
+    {
+        User user = User.ProvisionFromEntra(Guid.NewGuid(), Guid.NewGuid(), "a@b.com", "A");
+        Guid groupId = Guid.NewGuid();
+        user.AddToGroup(groupId);
+
+        user.RemoveFromGroup(groupId);
+
+        user.GroupIds.ShouldBeEmpty();
+    }
 }

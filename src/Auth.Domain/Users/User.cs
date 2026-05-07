@@ -4,6 +4,9 @@ namespace Auth.Domain.Users;
 
 public sealed class User : Entity
 {
+    private readonly HashSet<Guid> _roleIds = [];
+    private readonly HashSet<Guid> _groupIds = [];
+
     private User()
     {
     }
@@ -17,6 +20,9 @@ public sealed class User : Entity
     public bool IsActive { get; private set; }
     public bool IsPreProvisioned { get; private set; }
     public DateTimeOffset? LastLoginAt { get; private set; }
+
+    public IReadOnlyCollection<Guid> RoleIds => _roleIds;
+    public IReadOnlyCollection<Guid> GroupIds => _groupIds;
 
     public static User ProvisionFromEntra(Guid tenantId, Guid entraOid, string email, string displayName)
     {
@@ -63,4 +69,12 @@ public sealed class User : Entity
     public void SetNetSuiteEmail(string? netSuiteEmail) => NetSuiteEmail = netSuiteEmail;
 
     public void RecordLogin() => LastLoginAt = DateTimeOffset.UtcNow;
+
+    public void AssignRole(Guid roleId) => _roleIds.Add(roleId);
+
+    public void RevokeRole(Guid roleId) => _roleIds.Remove(roleId);
+
+    public void AddToGroup(Guid groupId) => _groupIds.Add(groupId);
+
+    public void RemoveFromGroup(Guid groupId) => _groupIds.Remove(groupId);
 }
