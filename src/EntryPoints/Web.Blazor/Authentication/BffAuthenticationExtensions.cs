@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Web.Blazor.Authentication.TokenStore;
 
 namespace Web.Blazor.Authentication;
 
@@ -58,6 +60,28 @@ public static class BffAuthenticationExtensions
 
                 options.TokenValidationParameters.NameClaimType = "name";
                 options.TokenValidationParameters.RoleClaimType = "role";
+            });
+
+        services.AddOptions<OpenIdConnectOptions>(OidcScheme)
+            .Configure<ITokenStore>((opt, store) =>
+            {
+                opt.Events.OnTokenValidated = ctx =>
+                {
+                    string sessionId = Guid.NewGuid().ToString("N");
+                    var tokens = new SessionTokens(
+                        AccessToken: ctx.TokenEndpointResponse?.AccessToken ?? string.Empty,
+                        RefreshToken: ctx.TokenEndpointResponse?.RefreshToken,
+                        IdToken: ctx.TokenEndpointResponse?.IdToken,
+                        ExpiresAt: DateTimeOffset.UtcNow.AddSeconds(
+                            int.TryParse(ctx.TokenEndpointResponse?.ExpiresIn, out int s) ? s : 900));
+
+                    var identity = (ClaimsIdentity)ctx.Principal!.Identity!;
+                    identity.AddClaim(new Claim("session_id", sessionId));
+
+                    return ctx.HttpContext.RequestServices
+                        .GetRequiredService<ITokenStore>()
+                        .SaveAsync(sessionId, tokens, ctx.HttpContext.RequestAborted);
+                };
             });
 
         return services;

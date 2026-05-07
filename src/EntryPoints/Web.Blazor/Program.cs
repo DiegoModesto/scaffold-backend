@@ -1,6 +1,9 @@
 using Infra.Observability;
+using Microsoft.AspNetCore.DataProtection;
 using Serilog;
+using StackExchange.Redis;
 using Web.Blazor.Authentication;
+using Web.Blazor.Authentication.TokenStore;
 using Web.Blazor.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -10,6 +13,25 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 
 builder.Services
     .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.Blazor", includeAspNetCore: true);
+
+string redisConnection = builder.Configuration["Redis:ConnectionString"]
+    ?? throw new InvalidOperationException("Redis:ConnectionString must be configured.");
+
+IConnectionMultiplexer redisMultiplexer = await ConnectionMultiplexer.ConnectAsync(redisConnection);
+builder.Services.AddSingleton(redisMultiplexer);
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnection;
+    options.InstanceName = "bff:cache:";
+});
+
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToStackExchangeRedis(redisMultiplexer, "bff:dp-keys")
+    .SetApplicationName("Web.Blazor.BFF");
+
+builder.Services.AddSingleton<ITokenStore, RedisTokenStore>();
 
 builder.Services.AddBffAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
