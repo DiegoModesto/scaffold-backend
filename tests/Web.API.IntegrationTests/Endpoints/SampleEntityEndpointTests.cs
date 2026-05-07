@@ -29,7 +29,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     {
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _factory.CreateBearerToken());
+            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
 
         HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/v1/sample-entities",
@@ -43,7 +43,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     {
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _factory.CreateBearerToken());
+            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
 
         HttpResponseMessage create = await client.PostAsJsonAsync(
             "/api/v1/sample-entities",
@@ -72,7 +72,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     {
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _factory.CreateBearerToken());
+            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
 
         HttpResponseMessage response = await client.GetAsync($"/api/v1/sample-entities/{Guid.NewGuid()}");
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
