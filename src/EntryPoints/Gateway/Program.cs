@@ -14,6 +14,7 @@ builder.Services.AddOpenTelemetryObservability(
     additionalActivitySources: "Gateway");
 
 builder.Services.AddGatewayAuthentication(builder.Configuration);
+builder.Services.AddGatewayHealthChecks(builder.Configuration);
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
@@ -26,6 +27,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
+app.MapHealthChecks("/health/ready", new()
+{
+    Predicate = h => h.Tags.Contains("ready")
+});
 app.MapReverseProxy();
 
 await app.RunAsync();
