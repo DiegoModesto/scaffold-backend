@@ -15,4 +15,28 @@ public sealed class GroupTests
 
         group.EntraGroupId.ShouldBe(entraGroupId);
     }
+
+    [Fact]
+    public void UpdateDetails_UpdatesAllFields()
+    {
+        Group group = Group.Create(Guid.NewGuid(), "Old", "Old desc");
+        Guid newEntra = Guid.NewGuid();
+
+        group.UpdateDetails("New", "New desc", newEntra);
+
+        group.Name.ShouldBe("New");
+        group.Description.ShouldBe("New desc");
+        group.EntraGroupId.ShouldBe(newEntra);
+    }
+
+    [Fact]
+    public void Delete_SetsIsDeletedAndDeletedAt()
+    {
+        Group group = Group.Create(Guid.NewGuid(), "Eng", "Eng team");
+
+        group.Delete();
+
+        group.IsDeleted.ShouldBeTrue();
+        group.DeletedAt.ShouldNotBeNull();
+    }
 }

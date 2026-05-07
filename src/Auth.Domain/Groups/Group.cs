@@ -34,6 +34,19 @@ public sealed class Group : Entity
 
     public void UnlinkEntraGroup() => EntraGroupId = null;
 
+    public void UpdateDetails(string name, string description, Guid? entraGroupId)
+    {
+        Name = name;
+        Description = description;
+        EntraGroupId = entraGroupId;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
+    }
+
     public void AssignRole(Guid roleId) => _roleIds.Add(roleId);
 
     public void RevokeRole(Guid roleId) => _roleIds.Remove(roleId);
