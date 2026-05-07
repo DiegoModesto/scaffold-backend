@@ -1,0 +1,117 @@
+@page "/admin/audit"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+
+<PageTitle>Audit log</PageTitle>
+
+<PermissionView Permission="audit.read">
+    <MudText Typo="Typo.h4" Class="mb-3">Audit log</MudText>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    <MudGrid Class="mb-3">
+        <MudItem xs="12" md="3">
+            <MudSelect T="Guid?" Label="User" @bind-Value="_userId" Clearable="true">
+                <MudSelectItem T="Guid?" Value="@((Guid?)null)">(any)</MudSelectItem>
+                @foreach (UserSummary u in _users)
+                {
+                    <MudSelectItem T="Guid?" Value="@u.Id">@u.Email</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" Label="Event type" @bind-Value="_eventType" Clearable="true">
+                <MudSelectItem T="string" Value="@string.Empty">(any)</MudSelectItem>
+                @foreach (string et in EventTypes)
+                {
+                    <MudSelectItem T="string" Value="@et">@et</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudDatePicker @bind-Date="_from" Label="From" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudDatePicker @bind-Date="_to" Label="To" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="ApplyFiltersAsync">
+                Apply filters
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudDataGrid T="AuthAuditEventResponse" ServerData="@LoadEvents" @ref="_grid" RowsPerPage="25">
+        <Columns>
+            <PropertyColumn Property="x => x.OccurredAt" Title="When" />
+            <PropertyColumn Property="x => x.EventType" Title="Event" />
+            <PropertyColumn Property="x => x.UserId" Title="User" />
+            <PropertyColumn Property="x => x.Ip" Title="IP" />
+            <PropertyColumn Property="x => x.UserAgent" Title="User agent" />
+            <PropertyColumn Property="x => x.Detail" Title="Detail" />
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="AuthAuditEventResponse" />
+        </PagerContent>
+    </MudDataGrid>
+</PermissionView>
+
+@code {
+    private static readonly string[] EventTypes =
+    {
+        "LoginSucceeded",
+        "LoginFailed",
+        "UserProvisioned",
+        "UserDisabled",
+        "UserEnabled",
+        "RoleAssigned",
+        "RoleRevoked",
+        "GroupCreated",
+        "M2MTokenIssued"
+    };
+
+    private MudDataGrid<AuthAuditEventResponse>? _grid;
+    private IReadOnlyCollection<UserSummary> _users = Array.Empty<UserSummary>();
+    private Guid? _userId;
+    private string _eventType = string.Empty;
+    private DateTime? _from;
+    private DateTime? _to;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            PagedResponse<UserSummary> page = await Client.ListUsersAsync(1, 200, null, CancellationToken.None);
+            _users = page.Items;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task<GridData<AuthAuditEventResponse>> LoadEvents(GridState<AuthAuditEventResponse> state)
+    {
+        try
+        {
+            _error = null;
+            DateTimeOffset? fromOff = _from is null ? null : new DateTimeOffset(_from.Value, TimeSpan.Zero);
+            DateTimeOffset? toOff = _to is null ? null : new DateTimeOffset(_to.Value, TimeSpan.Zero);
+            string? eventType = string.IsNullOrEmpty(_eventType) ? null : _eventType;
+            PagedResponse<AuthAuditEventResponse> page = await Client.ListAuditEventsAsync(
+                state.Page + 1, state.PageSize, _userId, eventType, fromOff, toOff, CancellationToken.None);
+            return new GridData<AuthAuditEventResponse> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return new GridData<AuthAuditEventResponse> { Items = Array.Empty<AuthAuditEventResponse>(), TotalItems = 0 };
+        }
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+}
