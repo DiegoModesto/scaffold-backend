@@ -83,5 +83,8 @@
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- Identity (gateway-specific) -->
     <PackageVersion Include="OpenIddict.Validation.SystemNetHttp" Version="6.4.0" />
+    <!-- SAML -->
+    <PackageVersion Include="ITfoxtec.Identity.Saml2" Version="4.17.0" />
+    <PackageVersion Include="ITfoxtec.Identity.Saml2.MvcCore" Version="4.17.0" />
   </ItemGroup>
 </Project>
