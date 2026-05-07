@@ -1,5 +1,6 @@
 using Auth.API;
 using Auth.API.Extensions;
+using Auth.API.Telemetry;
 using Auth.Application;
 using Auth.Infra;
 using Auth.Infra.OpenIddict;
@@ -14,7 +15,8 @@ builder.Host.UseSerilog((ctx, sp, cfg) =>
 builder.Services.AddOpenTelemetryObservability(
     builder.Configuration,
     serviceName: "Auth.API",
-    includeAspNetCore: true);
+    includeAspNetCore: true,
+    additionalActivitySources: AuthActivitySource.Name);
 
 builder.Services.AddAuthApplication();
 builder.Services.AddAuthInfrastructure(builder.Configuration);

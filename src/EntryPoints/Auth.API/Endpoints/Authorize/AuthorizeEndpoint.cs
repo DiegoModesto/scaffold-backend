@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using Auth.API.Authentication;
+using Auth.API.Telemetry;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Tenants.Resolve;
@@ -25,6 +27,8 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         IPermissionResolver permissions,
         CancellationToken ct)
     {
+        using Activity? activity = AuthActivitySource.Instance.StartActivity("Authorize");
+
         OpenIddictRequest request = http.GetOpenIddictServerRequest()
             ?? throw new InvalidOperationException("OpenIddict server request not available.");
 
@@ -54,11 +58,16 @@ internal sealed class AuthorizeEndpoint : IEndpoint
             return Results.Forbid();
         }
 
+        activity?.SetTag("entra.tid", tid);
+        activity?.SetTag("entra.oid", oid);
+
         var tenantR = await resolveTenant.Handle(new ResolveTenantQuery(tid), ct);
         if (tenantR.IsFailure)
         {
             return Results.Forbid();
         }
+
+        activity?.SetTag("tenant.id", tenantR.Value.Id);
 
         var userR = await syncUser.Handle(
             new SyncEntraUserCommand(tenantR.Value.Id, oid, email, displayName), ct);
@@ -66,6 +75,8 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         {
             return Results.Forbid();
         }
+
+        activity?.SetTag("user.id", userR.Value);
 
         var permsR = await permissions.ResolveAsync(tenantR.Value.Id, userR.Value, ct);
         IReadOnlyCollection<string> perms = permsR.IsSuccess ? permsR.Value : [];

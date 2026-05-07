@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Security.Claims;
+using Auth.API.Telemetry;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.M2MClients.Authenticate;
@@ -72,6 +74,9 @@ internal sealed class TokenEndpoint : IEndpoint
 
         if (request.IsClientCredentialsGrantType())
         {
+            using Activity? activity = AuthActivitySource.Instance.StartActivity("TokenClientCredentials");
+            activity?.SetTag("client.id", request.ClientId);
+
             if (string.IsNullOrEmpty(request.ClientId) || string.IsNullOrEmpty(request.ClientSecret))
             {
                 return Results.Forbid();
@@ -83,6 +88,8 @@ internal sealed class TokenEndpoint : IEndpoint
             {
                 return Results.Forbid();
             }
+
+            activity?.SetTag("tenant.id", clientR.Value.TenantId);
 
             var identity = new ClaimsIdentity(
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
