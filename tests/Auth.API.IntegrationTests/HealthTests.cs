@@ -4,7 +4,8 @@ using Shouldly;
 namespace Auth.API.IntegrationTests;
 
 [Trait("Category", "Integration")]
-public sealed class HealthTests(AuthWebApplicationFactory factory) : IClassFixture<AuthWebApplicationFactory>
+[Collection(AuthApiCollection.Name)]
+public sealed class HealthTests(AuthWebApplicationFactory factory)
 {
     private readonly AuthWebApplicationFactory _factory = factory;
 

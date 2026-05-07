@@ -19,6 +19,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
+using OpenIddict.Server;
+using OpenIddict.Server.AspNetCore;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 using WireMock.RequestBuilders;
@@ -128,6 +130,13 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
                 {
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
                 };
+            });
+
+            // The TestServer speaks HTTP. Disable OpenIddict's transport-security gate so
+            // /connect/token et al. accept the in-memory http requests.
+            services.PostConfigure<OpenIddictServerAspNetCoreOptions>(opt =>
+            {
+                opt.DisableTransportSecurityRequirement = true;
             });
         });
     }
