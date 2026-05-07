@@ -290,6 +290,34 @@ Reference docs:
 
 - Plan: [`docs/superpowers/plans/2026-05-07-gateway-yarp.md`](docs/superpowers/plans/2026-05-07-gateway-yarp.md)
 
+### Web.Blazor (BFF)
+
+`Web.Blazor` is the **backoffice BFF**: a Blazor Server app that talks to Auth.API as an OIDC client (client_id `bff-blazor`, code+PKCE+secret) and stores the resulting access/refresh/id tokens server-side in Redis under a session id carried by an HttpOnly cookie. The browser never sees the access token.
+
+Highlights:
+
+- **Cookie session** (HttpOnly, SameSite=Lax) tied to a Redis-backed token store. The OIDC handler's `OnTokenValidated` mints a `session_id` claim, persists `(access, refresh, id)` against it, and the cookie carries the `session_id` opaquely.
+- **Federated identity via Auth.API** (OpenIddict). Web.Blazor never authenticates users itself — it redirects to the Auth.API authorize endpoint and consumes the resulting tokens.
+- **Admin pages** (MudBlazor) for users / groups / roles / permissions / M2M clients / audit. Each page calls Auth.API admin endpoints through the Gateway via `IAdminGatewayClient` (typed `HttpClient`) and gates UI on permission claims with `<PermissionView Permission="...">`.
+- No direct DB access, no JWT signing key, no RabbitMQ. The BFF only depends on Redis (token store + DataProtection keys) and the Gateway (which fans out to Auth.API).
+
+Run it locally:
+
+```bash
+docker compose up -d redis auth-postgres auth.api gateway web.blazor
+# Web.Blazor → http://localhost:5002 (click "Login" to start the OIDC dance)
+```
+
+Required environment variables (see `compose.yaml`):
+
+- `Auth__Authority` (e.g. `http://auth.api:8080`), `Auth__ClientId=bff-blazor`, `Auth__ClientSecret` (`OPENIDDICT_BFF_SECRET`)
+- `Redis__ConnectionString`
+- `Gateway__BaseUrl` (e.g. `http://gateway:8080`)
+
+Reference docs:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-blazor-bff.md`](docs/superpowers/plans/2026-05-07-blazor-bff.md)
+
 ---
 
 ## 🇧🇷 Português
@@ -576,6 +604,34 @@ Variáveis de ambiente requeridas (ver `compose.yaml` e §9 do `CLAUDE.md`):
 Documentação de referência:
 
 - Plan: [`docs/superpowers/plans/2026-05-07-gateway-yarp.md`](docs/superpowers/plans/2026-05-07-gateway-yarp.md)
+
+### Web.Blazor (BFF)
+
+O `Web.Blazor` é o **BFF do backoffice**: um app Blazor Server que age como cliente OIDC da Auth.API (client_id `bff-blazor`, code+PKCE+secret) e mantém os tokens (access/refresh/id) no Redis, indexados por um session id carregado em um cookie HttpOnly. O browser nunca vê o access token.
+
+Destaques:
+
+- **Sessão por cookie** (HttpOnly, SameSite=Lax) atrelada a um token store em Redis. O `OnTokenValidated` do handler OIDC cria um claim `session_id`, persiste `(access, refresh, id)` sob esse id, e o cookie carrega o `session_id` opaco.
+- **Identidade federada via Auth.API** (OpenIddict). O Web.Blazor não autentica usuários por conta própria — ele redireciona para o authorize endpoint da Auth.API e consome os tokens resultantes.
+- **Páginas administrativas** (MudBlazor) para users / groups / roles / permissions / M2M clients / audit. Cada página chama os endpoints admin da Auth.API através do Gateway, via `IAdminGatewayClient` (`HttpClient` tipado), e protege a UI por claims de permissão com `<PermissionView Permission="...">`.
+- Sem acesso direto a banco, sem chave JWT, sem RabbitMQ. O BFF depende apenas de Redis (token store + DataProtection keys) e do Gateway (que faz fan-out para a Auth.API).
+
+Executando localmente:
+
+```bash
+docker compose up -d redis auth-postgres auth.api gateway web.blazor
+# Web.Blazor → http://localhost:5002 (clique em "Login" para iniciar o fluxo OIDC)
+```
+
+Variáveis de ambiente requeridas (ver `compose.yaml`):
+
+- `Auth__Authority` (ex.: `http://auth.api:8080`), `Auth__ClientId=bff-blazor`, `Auth__ClientSecret` (`OPENIDDICT_BFF_SECRET`)
+- `Redis__ConnectionString`
+- `Gateway__BaseUrl` (ex.: `http://gateway:8080`)
+
+Documentação de referência:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-blazor-bff.md`](docs/superpowers/plans/2026-05-07-blazor-bff.md)
 
 ---
 
