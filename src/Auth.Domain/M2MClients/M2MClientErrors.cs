@@ -12,6 +12,10 @@ public static class M2MClientErrors
         "M2MClient.Inactive",
         "The machine-to-machine client is inactive.");
 
+    public static readonly Error ClientIdAlreadyTaken = Error.Conflict(
+        "M2MClient.ClientIdAlreadyTaken",
+        "A machine-to-machine client with the same client id already exists.");
+
     public static Error NotFound(Guid id) => Error.NotFound(
         "M2MClient.NotFound",
         $"The machine-to-machine client with id '{id}' was not found.");
