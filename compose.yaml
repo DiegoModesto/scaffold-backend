@@ -40,18 +40,19 @@ services:
     image: ${DOCKER_REGISTRY-}webblazor
     container_name: base_scaffold_blazor
     depends_on:
-      - postgres
-      - rabbitmq
+      - redis
+      - auth.api
+      - gateway
     build:
       context: .
       dockerfile: src/EntryPoints/Web.Blazor/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
-      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASSWORD=guest
+      - Auth__Authority=http://auth.api:8080
+      - Auth__ClientId=bff-blazor
+      - Auth__ClientSecret=${OPENIDDICT_BFF_SECRET:-dev-only-bff-secret-change-me}
+      - Redis__ConnectionString=redis:6379
+      - Gateway__BaseUrl=http://gateway:8080
     ports:
       - "5002:8080"
 
