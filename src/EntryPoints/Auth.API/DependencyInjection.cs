@@ -1,4 +1,6 @@
+using System.Reflection;
 using Auth.API.Authentication;
+using Auth.API.Extensions;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace Auth.API;
@@ -12,6 +14,7 @@ internal static class DependencyInjection
         services.AddProblemDetails();
         services.AddOpenApi();
         services.AddEndpointsApiExplorer();
+        services.AddEndpoints(Assembly.GetExecutingAssembly());
 
         // Cookie scheme used between Auth.API and Entra (carries the Entra principal between
         // the OIDC callback and the OpenIddict authorize endpoint flow).

@@ -1,4 +1,5 @@
 using Auth.API;
+using Auth.API.Extensions;
 using Auth.Application;
 using Auth.Infra;
 using Auth.Infra.OpenIddict;
@@ -25,6 +26,8 @@ var app = builder.Build();
 app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapEndpoints();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 app.MapHealthChecks("/health/ready", new()
