@@ -318,6 +318,40 @@ Reference docs:
 
 - Plan: [`docs/superpowers/plans/2026-05-07-blazor-bff.md`](docs/superpowers/plans/2026-05-07-blazor-bff.md)
 
+### NetSuite SAML outbound SSO (Plan 4)
+
+Auth.API can sign SAML 2.0 assertions and POST them to NetSuite so an authenticated backoffice user is dropped straight into NetSuite, no second password prompt. The flow is **IdP-initiated only** in V1 (no SP-initiated, no SLO, no encrypted assertions).
+
+How it works:
+
+1. The BFF user navigates to `/admin/users/{id}/netsuite-redirect` (gated by `users.write`).
+2. Web.Blazor calls `POST /api/auth/saml/netsuite/initiate` (with `target_user_id`) through the Gateway with their bearer token.
+3. Auth.API resolves the target user, validates `NetSuiteEmail` is set, builds + signs a `<saml:Assertion>` with `ITfoxtec.Identity.Saml2` (RSA-SHA256), and returns a tiny HTML page whose body auto-POSTs the base64-encoded SAMLResponse to `https://system.netsuite.com/saml2/acs?account={AccountId}`.
+4. The browser executes the POST and lands inside NetSuite as the matching user.
+
+Local dev:
+
+```bash
+# Run once — generates src/EntryPoints/Auth.API/dev-certs/netsuite-saml.pfx (gitignored)
+bash scripts/generate-dev-saml-cert.sh
+
+# compose mounts dev-certs/ at /app/dev-certs:ro and provides safe defaults for the
+# NetSuite__* env vars. The actual POST will fail at NetSuite without a real account
+# configured, but you can verify the assertion is generated and submitted.
+docker compose up -d redis auth-postgres auth.api gateway web.blazor
+```
+
+Production:
+
+- Provision the signing PFX through your secret store and mount it at `NetSuite__SamlSigningCertificatePath`.
+- Export the matching X.509 public certificate and upload it to NetSuite under `Setup → Integration → SAML Single Sign-on`.
+- Configure NetSuite's IdP entityId to match `NetSuite__SamlIssuer` exactly (byte-for-byte).
+- Set every user's `NetSuiteEmail` (via the BFF admin UI) to the email of their NetSuite account.
+
+Reference docs:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-netsuite-saml.md`](docs/superpowers/plans/2026-05-07-netsuite-saml.md)
+
 ---
 
 ## 🇧🇷 Português
@@ -632,6 +666,40 @@ Variáveis de ambiente requeridas (ver `compose.yaml`):
 Documentação de referência:
 
 - Plan: [`docs/superpowers/plans/2026-05-07-blazor-bff.md`](docs/superpowers/plans/2026-05-07-blazor-bff.md)
+
+### NetSuite SAML SSO de saída (Plano 4)
+
+A Auth.API consegue assinar asserções SAML 2.0 e enviar via POST para o NetSuite, de forma que um usuário já autenticado no backoffice caia direto dentro do NetSuite, sem segunda autenticação. O fluxo é **somente IdP-initiated** na V1 (sem SP-initiated, sem SLO, sem asserções criptografadas).
+
+Como funciona:
+
+1. O usuário do BFF acessa `/admin/users/{id}/netsuite-redirect` (gated por `users.write`).
+2. O Web.Blazor faz `POST /api/auth/saml/netsuite/initiate` (com `target_user_id`) através do Gateway carregando o bearer token.
+3. A Auth.API resolve o usuário-alvo, valida que `NetSuiteEmail` está preenchido, monta + assina uma `<saml:Assertion>` com `ITfoxtec.Identity.Saml2` (RSA-SHA256), e devolve uma página HTML enxuta cujo `<body onload>` faz POST automático do `SAMLResponse` (base64) para `https://system.netsuite.com/saml2/acs?account={AccountId}`.
+4. O browser executa o POST e o usuário cai dentro do NetSuite já autenticado.
+
+Dev local:
+
+```bash
+# Rode UMA vez — gera src/EntryPoints/Auth.API/dev-certs/netsuite-saml.pfx (gitignored)
+bash scripts/generate-dev-saml-cert.sh
+
+# o compose monta dev-certs/ em /app/dev-certs:ro e fornece defaults seguros para
+# as variáveis NetSuite__*. O POST real falha do lado do NetSuite sem uma conta
+# configurada de verdade, mas dá para validar que a asserção é gerada e enviada.
+docker compose up -d redis auth-postgres auth.api gateway web.blazor
+```
+
+Produção:
+
+- Provisione o PFX de assinatura via secret store e aponte `NetSuite__SamlSigningCertificatePath` para ele.
+- Exporte a chave pública X.509 correspondente e suba no NetSuite em `Setup → Integration → SAML Single Sign-on`.
+- Configure o entityId do IdP no NetSuite igual a `NetSuite__SamlIssuer` (byte-for-byte).
+- Defina o `NetSuiteEmail` de cada usuário (na UI admin do BFF) com o e-mail da conta NetSuite correspondente.
+
+Documentação de referência:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-netsuite-saml.md`](docs/superpowers/plans/2026-05-07-netsuite-saml.md)
 
 ---
 
