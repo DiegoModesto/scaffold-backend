@@ -11,12 +11,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
+      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=guest
       - RABBITMQ_PASSWORD=guest
     ports:
-      - "5000:8080"
-      - "5001:8081"
+      - "5010:8080"
+      - "5011:8081"
 
   worker:
     image: ${DOCKER_REGISTRY-}worker
@@ -98,6 +99,7 @@ services:
     container_name: base_scaffold_seq
     environment:
       - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
     ports:
       - "5341:5341"
       - "8081:80"
