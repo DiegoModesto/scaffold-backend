@@ -85,3 +85,8 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 await app.RunAsync();
+
+namespace Web.Blazor
+{
+    public partial class Program;
+}
