@@ -1,0 +1,113 @@
+@page "/admin/m2m-clients/{Id:guid}"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>M2M Client detail</PageTitle>
+
+<PermissionView Permission="m2m.read">
+    <MudButton Href="/admin/m2m-clients" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-3">Back</MudButton>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_client is null)
+    {
+        <MudAlert Severity="Severity.Warning">Client not found.</MudAlert>
+    }
+    else
+    {
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h5">@_client.DisplayName</MudText>
+                    <MudText Typo="Typo.body2">@_client.ClientId</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText><b>Status:</b> @(_client.IsActive ? "Active" : "Inactive")</MudText>
+                <MudText Class="mt-2"><b>Allowed scopes:</b></MudText>
+                @if (_client.AllowedScopes.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">(none)</MudText>
+                }
+                else
+                {
+                    <MudStack Row="true" Spacing="1" Class="mt-1">
+                        @foreach (string scope in _client.AllowedScopes)
+                        {
+                            <MudChip T="string">@scope</MudChip>
+                        }
+                    </MudStack>
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <PermissionView Permission="m2m.write">
+                    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="RegenerateAsync">Regenerate secret</MudButton>
+                    @if (_client.IsActive)
+                    {
+                        <MudButton Color="Color.Warning" Variant="Variant.Outlined" OnClick="DeactivateAsync">Deactivate</MudButton>
+                    }
+                </PermissionView>
+            </MudCardActions>
+        </MudCard>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private M2MClientDetailResponse? _client;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try { _client = await Client.GetM2MClientAsync(Id, CancellationToken.None); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task RegenerateAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Regenerate secret",
+            "The previous secret will stop working immediately. Continue?",
+            yesText: "Regenerate", cancelText: "Cancel");
+        if (confirmed != true) return;
+        try
+        {
+            string secret = await Client.RegenerateM2MClientSecretAsync(Id, CancellationToken.None);
+            var parameters = new DialogParameters { ["Secret"] = secret };
+            await DialogService.ShowAsync<Dialogs.ShowSecretDialog>("New client secret", parameters,
+                new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false });
+            await ReloadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeactivateAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Deactivate client", "Are you sure?", yesText: "Deactivate", cancelText: "Cancel");
+        if (confirmed != true) return;
+        try
+        {
+            await Client.DeactivateM2MClientAsync(Id, CancellationToken.None);
+            Snackbar.Add("Client deactivated.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

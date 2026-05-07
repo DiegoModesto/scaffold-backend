@@ -1,0 +1,47 @@
+@inject IAdminGatewayClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_clientId" Label="Client Id" Required="true" />
+        <MudTextField @bind-Value="_displayName" Label="Display name" Required="true" />
+        <MudTextField @bind-Value="_scopesText" Label="Allowed scopes (space-separated)" />
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _clientId = "";
+    private string _displayName = "";
+    private string? _scopesText;
+    private bool _busy;
+    private string? _error;
+
+    private async Task Submit()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            string[] scopes = string.IsNullOrWhiteSpace(_scopesText)
+                ? Array.Empty<string>()
+                : _scopesText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            CreateM2MClientResponse resp = await Client.CreateM2MClientAsync(_clientId, _displayName, scopes, CancellationToken.None);
+            Snackbar.Add("M2M client created.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(resp));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
