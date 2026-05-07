@@ -6,7 +6,8 @@ using Web.API.IntegrationTests.Infrastructure;
 
 namespace Web.API.IntegrationTests.Endpoints;
 
-public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFactory>
+[Collection(WebApiCollection.Name)]
+public class SampleEntityEndpointTests
 {
     private readonly CustomWebApplicationFactory _factory;
 

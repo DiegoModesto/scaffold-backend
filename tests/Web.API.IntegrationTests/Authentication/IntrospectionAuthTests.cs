@@ -9,7 +9,8 @@ using Web.API.IntegrationTests.Infrastructure;
 
 namespace Web.API.IntegrationTests.Authentication;
 
-public sealed class IntrospectionAuthTests : IClassFixture<CustomWebApplicationFactory>
+[Collection(WebApiCollection.Name)]
+public sealed class IntrospectionAuthTests
 {
     private readonly CustomWebApplicationFactory _factory;
 
