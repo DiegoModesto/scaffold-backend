@@ -1,0 +1,79 @@
+@inject IAdminGatewayClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudSelect T="Guid?" @bind-Value="_selectedGroupId" Label="Group" Required="true">
+                @foreach (GroupSummary g in _groups)
+                {
+                    <MudSelectItem T="Guid?" Value="@g.Id">@g.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy || _selectedGroupId is null">Add</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid UserId { get; set; }
+
+    private IReadOnlyCollection<GroupSummary> _groups = Array.Empty<GroupSummary>();
+    private Guid? _selectedGroupId;
+    private bool _busy;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            PagedResponse<GroupSummary> page = await Client.ListGroupsAsync(1, 200, null, CancellationToken.None);
+            _groups = page.Items;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_selectedGroupId is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Client.AddUserToGroupAsync(UserId, _selectedGroupId.Value, CancellationToken.None);
+            Snackbar.Add("User added to group.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
