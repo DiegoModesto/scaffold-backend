@@ -83,7 +83,9 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
         // PermissionSeedHostedService / OpenIddictClientSeedHostedService). We use a tiny
         // standalone service provider that mirrors AuthDbContext's registration plus
         // OpenIddict's EF Core integration so the model contains both our entities AND
-        // OpenIddict's. EnsureCreated is sufficient — this is a throwaway test database.
+        // OpenIddict's. We run MigrateAsync (not EnsureCreated) so the test path matches
+        // the production-ish path Auth.API runs on Development startup — both are
+        // migration-driven and idempotent against an already-migrated database.
         await EnsureSchemaStandaloneAsync();
     }
 
@@ -152,15 +154,15 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
             opt.UseSnakeCaseNamingConvention();
         });
 
-        // Wire OpenIddict EF Core so its entities appear in the model and EnsureCreated
-        // generates the openiddict_* tables alongside our auth schema.
+        // Wire OpenIddict EF Core so its entities appear in the model and migrations
+        // referencing openiddict_* tables resolve correctly.
         services.AddOpenIddict()
             .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<AuthDbContext>());
 
         await using ServiceProvider sp = services.BuildServiceProvider();
         using IServiceScope scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await db.Database.MigrateAsync();
     }
 
     private sealed class NoOpTenantContext : ITenantContext
