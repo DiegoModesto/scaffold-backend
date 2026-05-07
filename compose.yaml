@@ -158,6 +158,10 @@ services:
       - ReverseProxy__Routes__auth-admin__Match__Path=/api/auth/admin/{**catch-all}
       - ReverseProxy__Routes__auth-admin__AuthorizationPolicy=RequireBearer
       - ReverseProxy__Routes__auth-admin__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-saml__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-saml__Match__Path=/api/auth/saml/{**catch-all}
+      - ReverseProxy__Routes__auth-saml__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Routes__auth-saml__Transforms__0__PathRemovePrefix=/api/auth
       - ReverseProxy__Routes__web-api__ClusterId=web-api-cluster
       - ReverseProxy__Routes__web-api__Match__Path=/api/v1/{**catch-all}
       - ReverseProxy__Routes__web-api__AuthorizationPolicy=RequireBearer
