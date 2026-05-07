@@ -2,6 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 using Auth.Infra.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using OpenIddict.Abstractions;
 using Quartz;
 
@@ -86,6 +87,8 @@ public static class OpenIddictExtensions
                 o.UseLocalServer();
                 o.UseAspNetCore();
             });
+
+        services.AddHostedService<OpenIddictClientSeedHostedService>();
 
         return services;
     }
