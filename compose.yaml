@@ -130,6 +130,37 @@ services:
     ports:
       - "5100:8080"
 
+  gateway:
+    image: ${DOCKER_REGISTRY-}gateway
+    container_name: base_scaffold_gateway
+    depends_on:
+      - redis
+      - auth.api
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Gateway/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__ConnectionString=redis:6379
+      - Auth__Authority=http://auth.api:8080
+      - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
+      - Auth__IntrospectionClientId=gateway
+      - Auth__IntrospectionClientSecret=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
+      - IntrospectionCache__TtlSeconds=30
+      - ReverseProxy__Routes__auth-discovery__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-discovery__Match__Path=/api/auth/.well-known/{**catch-all}
+      - ReverseProxy__Routes__auth-discovery__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-connect__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-connect__Match__Path=/api/auth/connect/{**catch-all}
+      - ReverseProxy__Routes__auth-connect__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__web-api__ClusterId=web-api-cluster
+      - ReverseProxy__Routes__web-api__Match__Path=/api/v1/{**catch-all}
+      - ReverseProxy__Routes__web-api__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth__Address=http://auth.api:8080/
+      - ReverseProxy__Clusters__web-api-cluster__Destinations__web-api__Address=http://web.api:8080/
+    ports:
+      - "5200:8080"
+
   auth-postgres:
     image: postgres:17
     container_name: base_scaffold_auth_db
