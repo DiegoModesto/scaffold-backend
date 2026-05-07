@@ -36,6 +36,8 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthDbContext>(sp => sp.GetRequiredService<AuthDbContext>());
 
+        services.AddHostedService<PermissionSeedHostedService>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<IPermissionResolver, PermissionResolver>();
