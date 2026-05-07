@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Gateway.Authentication;
+using Infra.Authentication;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;

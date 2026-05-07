@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using OpenIddict.Validation.AspNetCore;
 
 namespace Infra.Authentication;
 
 public static class IntrospectionAuthenticationExtensions
 {
+    // Name OpenIddict.Validation.SystemNetHttp uses to register its IHttpClientFactory client.
+    private const string OpenIddictValidationHttpClientName = "OpenIddict.Validation.SystemNetHttp";
+
     public static IServiceCollection AddIntrospectionAuthentication(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -21,6 +25,31 @@ public static class IntrospectionAuthenticationExtensions
             ?? throw new InvalidOperationException("Auth:IntrospectionClientId is required.");
         string clientSecret = section["IntrospectionClientSecret"]
             ?? throw new InvalidOperationException("Auth:IntrospectionClientSecret is required.");
+
+        // Optional Redis-backed introspection cache. When Redis is configured we attach a
+        // DelegatingHandler to the OpenIddict introspection HttpClient that caches responses
+        // by token hash. When Redis is absent (e.g. in-process tests that wire their own
+        // mocks), the handler is skipped — OpenIddict still works, just without caching.
+        string? redisConn = configuration["Redis:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
+            services.Configure<IntrospectionCacheOptions>(
+                configuration.GetSection(IntrospectionCacheOptions.SectionName));
+            services.AddTransient<IntrospectionCachingHandler>();
+
+            services.PostConfigure<HttpClientFactoryOptions>(
+                OpenIddictValidationHttpClientName,
+                options =>
+                {
+                    options.HttpMessageHandlerBuilderActions.Add(builder =>
+                    {
+                        IntrospectionCachingHandler handler = builder.Services
+                            .GetRequiredService<IntrospectionCachingHandler>();
+                        builder.AdditionalHandlers.Add(handler);
+                    });
+                });
+        }
 
         services.AddOpenIddict()
             .AddValidation(o =>

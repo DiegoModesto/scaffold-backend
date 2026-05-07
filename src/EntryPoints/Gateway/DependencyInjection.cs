@@ -1,4 +1,4 @@
-using Gateway.Authentication;
+using Infra.Authentication;
 using Microsoft.Extensions.Http;
 using OpenIddict.Validation.AspNetCore;
 

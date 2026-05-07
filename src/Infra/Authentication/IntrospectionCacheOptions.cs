@@ -1,6 +1,6 @@
-namespace Gateway.Authentication;
+namespace Infra.Authentication;
 
-internal sealed class IntrospectionCacheOptions
+public sealed class IntrospectionCacheOptions
 {
     public const string SectionName = "IntrospectionCache";
 

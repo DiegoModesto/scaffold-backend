@@ -3,11 +3,11 @@ using System.Text;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 
-namespace Gateway.Authentication;
+namespace Infra.Authentication;
 
-internal sealed class IntrospectionCachingHandler : DelegatingHandler
+public sealed class IntrospectionCachingHandler : DelegatingHandler
 {
-    private const string CacheKeyPrefix = "gateway:introspect:";
+    private const string CacheKeyPrefix = "introspect:";
 
     private readonly IDistributedCache _cache;
     private readonly IntrospectionCacheOptions _options;
@@ -24,14 +24,14 @@ internal sealed class IntrospectionCachingHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var token = await ExtractTokenAsync(request, cancellationToken);
+        string? token = await ExtractTokenAsync(request, cancellationToken);
         if (token is null)
         {
             return await base.SendAsync(request, cancellationToken);
         }
 
-        var key = CacheKeyPrefix + Hash(token);
-        var cached = await _cache.GetAsync(key, cancellationToken);
+        string key = CacheKeyPrefix + Hash(token);
+        byte[]? cached = await _cache.GetAsync(key, cancellationToken);
         if (cached is not null)
         {
             return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
@@ -43,10 +43,10 @@ internal sealed class IntrospectionCachingHandler : DelegatingHandler
             };
         }
 
-        var response = await base.SendAsync(request, cancellationToken);
+        HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            byte[] body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             await _cache.SetAsync(key, body, new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = _options.Ttl
@@ -71,16 +71,16 @@ internal sealed class IntrospectionCachingHandler : DelegatingHandler
             return null;
         }
 
-        var body = await request.Content.ReadAsStringAsync(ct);
+        string body = await request.Content.ReadAsStringAsync(ct);
 
         // Re-set the content so the inner handler still sees the body — reading the stream
         // can consume it for some HttpContent types.
-        var mediaType = request.Content.Headers.ContentType?.MediaType ?? "application/x-www-form-urlencoded";
+        string mediaType = request.Content.Headers.ContentType?.MediaType ?? "application/x-www-form-urlencoded";
         request.Content = new StringContent(body, Encoding.UTF8, mediaType);
 
-        foreach (var pair in body.Split('&'))
+        foreach (string pair in body.Split('&'))
         {
-            var kv = pair.Split('=', 2);
+            string[] kv = pair.Split('=', 2);
             if (kv.Length == 2 && kv[0] == "token")
             {
                 return Uri.UnescapeDataString(kv[1]);
@@ -91,7 +91,7 @@ internal sealed class IntrospectionCachingHandler : DelegatingHandler
 
     private static string Hash(string token)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToHexStringLower(bytes);
     }
 }
