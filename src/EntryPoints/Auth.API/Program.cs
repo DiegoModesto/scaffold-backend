@@ -1,6 +1,37 @@
+using Auth.API;
+using Auth.Application;
+using Auth.Infra;
+using Auth.Infra.OpenIddict;
+using Infra.Observability;
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, sp, cfg) =>
+    cfg.ReadFrom.Configuration(ctx.Configuration).ReadFrom.Services(sp));
+
+builder.Services.AddOpenTelemetryObservability(
+    builder.Configuration,
+    serviceName: "Auth.API",
+    includeAspNetCore: true);
+
+builder.Services.AddAuthApplication();
+builder.Services.AddAuthInfrastructure(builder.Configuration);
+builder.Services.AddAuthOpenIddict(builder.Configuration);
+builder.Services.AddAuthApiPresentation(builder.Configuration);
+
 var app = builder.Build();
+
+app.UseSerilogRequestLogging();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
+app.MapHealthChecks("/health/ready", new()
+{
+    Predicate = h => h.Tags.Contains("ready")
+});
+
 await app.RunAsync();
 
 namespace Auth.API
