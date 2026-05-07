@@ -88,6 +88,7 @@ app.UseSerilogRequestLogging();
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
+app.UseMiddleware<TenantContextMiddleware>();
 app.UseAuthorization();
 
 await app.RunAsync();
