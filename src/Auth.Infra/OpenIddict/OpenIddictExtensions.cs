@@ -82,11 +82,18 @@ public static class OpenIddictExtensions
                     o.AddDevelopmentEncryptionCertificate();
                 }
 
-                o.UseAspNetCore()
+                var aspnet = o.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
                     .EnableTokenEndpointPassthrough()
                     .EnableUserInfoEndpointPassthrough()
                     .EnableEndSessionEndpointPassthrough();
+
+                // In Development we run on plain HTTP (no TLS terminator). Production
+                // must always run behind TLS — gateway/proxy terminates and forwards.
+                if (configuration.GetValue("OpenIddict:DisableTransportSecurityRequirement", false))
+                {
+                    aspnet.DisableTransportSecurityRequirement();
+                }
             })
             .AddValidation(o =>
             {

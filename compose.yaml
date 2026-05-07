@@ -122,7 +122,8 @@ services:
       - Entra__Authority=${ENTRA_AUTHORITY:-}
       - Entra__ClientId=${ENTRA_CLIENT_ID:-}
       - Entra__ClientSecret=${ENTRA_CLIENT_SECRET:-}
-      - OpenIddict__Issuer=http://auth.api:8080
+      - OpenIddict__Issuer=http://localhost:5100
+      - OpenIddict__DisableTransportSecurityRequirement=true
       - OPENIDDICT_BFF_SECRET=${OPENIDDICT_BFF_SECRET:-dev-only-bff-secret-change-me}
       - OPENIDDICT_WEB_API_SECRET=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
       - OPENIDDICT_GATEWAY_SECRET=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
