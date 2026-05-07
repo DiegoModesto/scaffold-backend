@@ -5,10 +5,12 @@ using Auth.Application.Abstractions.Tenancy;
 using Auth.Infra.Database;
 using Auth.Infra.Identity;
 using Auth.Infra.Tenancy;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Auth.Infra;
 
@@ -35,6 +37,25 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IAuthDbContext>(sp => sp.GetRequiredService<AuthDbContext>());
+
+        string? redisConn = configuration["Redis:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(redisConn))
+        {
+            throw new InvalidOperationException(
+                "Redis:ConnectionString must be configured for Auth.Infra (StackExchange.Redis connection string).");
+        }
+
+        services.AddStackExchangeRedisCache(o =>
+        {
+            o.Configuration = redisConn;
+        });
+
+        IConnectionMultiplexer multiplexer = ConnectionMultiplexer.Connect(redisConn);
+        services.AddSingleton(multiplexer);
+
+        services.AddDataProtection()
+            .PersistKeysToStackExchangeRedis(multiplexer, "auth:dataprotection-keys")
+            .SetApplicationName("Auth.API");
 
         services.AddHostedService<PermissionSeedHostedService>();
 
