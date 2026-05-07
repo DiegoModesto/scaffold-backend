@@ -15,7 +15,7 @@ This file is the **single source of truth for AI coding agents** (Claude Code, C
 - Target framework: `net10.0` (pinned by `global.json`, SDK 10.0.203+)
 - Central Package Management: all versions live in `Directory.Packages.props`
 - NuGet packages restore into a repo-local `.nuget-cache/` folder (configured in `nuget.config`, gitignored). This avoids permission issues with the global `~/.nuget/packages/` cache and keeps installs reproducible per checkout. Delete the folder to force a clean restore.
-- Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler), `Auth.API` (standalone identity service — separate bounded context with its own DB).
+- Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler), `Auth.API` (standalone identity service — separate bounded context with its own DB), `Gateway` (YARP reverse proxy with Redis-backed introspection cache).
 
 ---
 
@@ -99,6 +99,12 @@ src/
     ├── Worker/                      # RabbitMQ consumer — extend with one consumer per queue/topic
     │   ├── Messaging/               # SampleMessageConsumer (uses Infra.Messaging primitives)
     │   └── Dockerfile
+    ├── Gateway/                     # YARP reverse proxy with introspection cache
+    │   ├── Authentication/          # IntrospectionCachingHandler, ForwardedIdentityTransform
+    │   ├── HealthChecks/            # AuthApiHealthCheck
+    │   ├── Program.cs
+    │   ├── DependencyInjection.cs
+    │   └── Dockerfile
     └── Auth.API/                    # Standalone identity service — separate bounded context
         ├── Authentication/          # OIDC + OpenIddict wiring
         ├── Endpoints/               # /connect/* endpoints (authorize, token, introspect, userinfo, logout)
@@ -127,7 +133,8 @@ tests/
 │   └── Middleware/                  # GlobalExceptionHandlingMiddleware tests
 ├── Auth.Domain.UnitTests/           # Auth aggregate tests
 ├── Auth.Application.UnitTests/      # Auth handler/validator tests
-└── Auth.API.IntegrationTests/       # WebApplicationFactory + Postgres/Redis Testcontainers + WireMock Entra
+├── Auth.API.IntegrationTests/       # WebApplicationFactory + Postgres/Redis Testcontainers + WireMock Entra
+└── Gateway.IntegrationTests/        # YARP introspection cache + forwarded identity tests
 ```
 
 ---
@@ -374,6 +381,13 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
      - `Redis__ConnectionString` (or `REDIS_CONNECTION_STRING`)
      - `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_AUTHORITY` — Microsoft Entra ID (OIDC) federation
      - `OPENIDDICT_BFF_SECRET`, `OPENIDDICT_WEB_API_SECRET`, `OPENIDDICT_GATEWAY_SECRET` — client secrets seeded into OpenIddict applications. **In production these MUST fail-fast at startup if missing or using a default value.**
+   - **Gateway**:
+     - `Auth__Authority` — Auth.API base URL used for OIDC discovery
+     - `Auth__IntrospectionEndpoint` — full URL of `/connect/introspect` (defaults to `{Authority}/connect/introspect`)
+     - `Auth__IntrospectionClientId` (defaults to `gateway`) and `Auth__IntrospectionClientSecret` (`OPENIDDICT_GATEWAY_SECRET`) — must match a seeded OpenIddict resource server with the `Endpoints.Introspection` permission
+     - `Redis__ConnectionString` — Redis used by `IntrospectionCachingHandler`
+     - `IntrospectionCache__TtlSeconds` (defaults to `30`) — TTL for cached introspection responses
+     - `ReverseProxy__*` — YARP routes/clusters (see `compose.yaml` for the full env-var-driven config)
 2. **Every endpoint** gets `.RequireAuthorization()` by default. If an endpoint must be public, call `.AllowAnonymous()` and explain why in the PR.
 3. **No raw SQL with string concatenation.** EF Core parameterises automatically; use `FromSqlInterpolated` if you need raw SQL.
 4. **Never return domain entities from endpoints.** Always project into a DTO / response record.
@@ -496,6 +510,9 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | Entra `tid` claim missing on principal | Authority misconfigured or strict issuer validation | Verify `Entra:Authority` and that `ValidateIssuer = false` (we accept multi-tenant tokens and validate via our `Tenants` table) |
 | Auth.API fails to start with `OpenIddict has not been registered as a default identifier generator` | Migration not applied | Apply migrations — the `InitialAuthSchema` migration includes the OpenIddict EF tables |
 | TestServer cannot reach Entra over HTTPS | OIDC discovery requires HTTPS by default | Set `OpenIdConnectOptions.RequireHttpsMetadata = false` in dev/test only |
+| Gateway returns 401 for valid token | Introspection client not seeded or wrong secret | Check `Auth:IntrospectionClientId/Secret` match a seeded resource server with `Endpoints.Introspection` permission |
+| Token revoked but Gateway still admits requests | Introspection cache hit (default TTL 30s) | Reduce `IntrospectionCache:TtlSeconds`, or call `/connect/revocation` and wait up to TTL |
+| Downstream service can't read identity | Forward headers missing | Look for `X-Forwarded-User` / `X-Forwarded-TenantId` headers (set by `ForwardedIdentityTransform`; Plan 5 reads them in Web.API) |
 
 ---
 
