@@ -106,6 +106,47 @@ services:
     volumes:
       - ./.containers/seq:/data
 
+  auth.api:
+    image: ${DOCKER_REGISTRY-}authapi
+    container_name: base_scaffold_auth_api
+    depends_on:
+      - auth-postgres
+      - redis
+    build:
+      context: .
+      dockerfile: src/EntryPoints/Auth.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__AuthDb=Host=auth-postgres;Port=5432;Database=auth_db;Username=postgres;Password=postgres;
+      - Redis__ConnectionString=redis:6379
+      - Entra__Authority=${ENTRA_AUTHORITY:-}
+      - Entra__ClientId=${ENTRA_CLIENT_ID:-}
+      - Entra__ClientSecret=${ENTRA_CLIENT_SECRET:-}
+      - OpenIddict__Issuer=http://auth.api:8080
+      - OPENIDDICT_BFF_SECRET=${OPENIDDICT_BFF_SECRET:-dev-only-bff-secret-change-me}
+      - OPENIDDICT_WEB_API_SECRET=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
+      - OPENIDDICT_GATEWAY_SECRET=${OPENIDDICT_GATEWAY_SECRET:-dev-only-gateway-secret-change-me}
+    ports:
+      - "5100:8080"
+
+  auth-postgres:
+    image: postgres:17
+    container_name: base_scaffold_auth_db
+    environment:
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./.containers/auth-db:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: base_scaffold_redis
+    ports:
+      - "6379:6379"
+
 volumes:
   postgresql_data:
     driver: local
