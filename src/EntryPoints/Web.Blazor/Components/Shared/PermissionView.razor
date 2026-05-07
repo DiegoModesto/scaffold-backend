@@ -1,0 +1,24 @@
+@inject AuthenticationStateProvider AuthState
+
+@if (_hasPermission)
+{
+    @ChildContent
+}
+else if (NoAccessFallback is not null)
+{
+    @NoAccessFallback
+}
+
+@code {
+    [Parameter] public string Permission { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? NoAccessFallback { get; set; }
+
+    private bool _hasPermission;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _hasPermission = state.User.Claims.Any(c => c.Type == "permission" && c.Value == Permission);
+    }
+}
