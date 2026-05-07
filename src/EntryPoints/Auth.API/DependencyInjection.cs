@@ -1,3 +1,4 @@
+using Auth.API.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace Auth.API;
@@ -43,12 +44,6 @@ internal static class DependencyInjection
                     ?? throw new InvalidOperationException("Redis:ConnectionString missing."),
                 name: "redis", tags: ["ready"]);
 
-        return services;
-    }
-
-    // Temporary stub — replaced in Task H.2 by EntraAuthenticationExtensions.AddEntraExternal.
-    public static IServiceCollection AddEntraExternal(this IServiceCollection services, IConfiguration configuration)
-    {
         return services;
     }
 }
