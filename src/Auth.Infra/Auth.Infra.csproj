@@ -25,6 +25,7 @@
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
     <PackageReference Include="OpenIddict.Quartz" />
     <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="ITfoxtec.Identity.Saml2" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Auth.API" />
