@@ -37,6 +37,18 @@ public static class BffAuthenticationExtensions
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
                 options.SlidingExpiration = true;
+
+                options.Events.OnSigningOut = ctx =>
+                {
+                    string? sessionId = ctx.HttpContext.User.FindFirstValue("session_id");
+                    if (!string.IsNullOrEmpty(sessionId))
+                    {
+                        ITokenStore store = ctx.HttpContext.RequestServices.GetRequiredService<ITokenStore>();
+                        return store.RemoveAsync(sessionId, ctx.HttpContext.RequestAborted);
+                    }
+
+                    return Task.CompletedTask;
+                };
             })
             .AddOpenIdConnect(OidcScheme, options =>
             {

@@ -1,4 +1,5 @@
 using Infra.Observability;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Serilog;
 using StackExchange.Redis;
@@ -54,6 +55,18 @@ app.UseSerilogRequestLogging();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/login", () => Results.Challenge(
+    new AuthenticationProperties { RedirectUri = "/" },
+    [BffAuthenticationExtensions.OidcScheme]));
+
+app.MapPost("/logout", async (HttpContext http) =>
+{
+    await http.SignOutAsync(BffAuthenticationExtensions.CookieScheme);
+    return Results.SignOut(
+        new AuthenticationProperties { RedirectUri = "/" },
+        [BffAuthenticationExtensions.OidcScheme]);
+}).RequireAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
