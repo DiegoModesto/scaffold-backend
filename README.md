@@ -258,6 +258,38 @@ Reference docs:
 - Spec: [`docs/superpowers/specs/2026-05-06-sso-auth-design.md`](docs/superpowers/specs/2026-05-06-sso-auth-design.md)
 - Plan: [`docs/superpowers/plans/2026-05-06-auth-api-core.md`](docs/superpowers/plans/2026-05-06-auth-api-core.md)
 
+### Gateway (YARP)
+
+`Gateway` is the **single ingress** for backend traffic. It sits in front of `Auth.API` and `Web.API`, validates opaque reference tokens via `POST /connect/introspect`, caches the result in Redis, and forwards a normalized identity downstream.
+
+Highlights:
+
+- Built on **YARP** with all routes / clusters bound from `ReverseProxy:*` configuration (env-var-friendly, see `compose.yaml`).
+- Routes external clients to Auth.API (`/api/auth/.well-known/*`, `/api/auth/connect/*`) and Web.API (`/api/v1/*`).
+- Validates tokens via the **OpenIddict introspection endpoint** with a **Redis-backed cache** (default TTL 30s) — drop-in replacement for hammering Auth.API on every request.
+- Forwards the canonical identity to downstream services via `X-Forwarded-User` and `X-Forwarded-TenantId` headers (consumed by Web.API in Plan 5).
+- Health checks: `/health/live` (process) and `/health/ready` (Redis + Auth.API discovery).
+
+Run it locally:
+
+```bash
+docker compose up -d redis auth-postgres auth.api gateway
+# Gateway discovery (proxied)  → http://localhost:5200/api/auth/.well-known/openid-configuration
+# Gateway health (live/ready)  → http://localhost:5200/health/live
+```
+
+Required environment variables (see `compose.yaml` and §9 of `CLAUDE.md`):
+
+- `Auth__Authority`, `Auth__IntrospectionEndpoint`
+- `Auth__IntrospectionClientId` (defaults to `gateway`) and `Auth__IntrospectionClientSecret` (`OPENIDDICT_GATEWAY_SECRET`)
+- `Redis__ConnectionString`
+- `IntrospectionCache__TtlSeconds` (defaults to `30`)
+- `ReverseProxy__Routes__*` and `ReverseProxy__Clusters__*` for YARP routing
+
+Reference docs:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-gateway-yarp.md`](docs/superpowers/plans/2026-05-07-gateway-yarp.md)
+
 ---
 
 ## 🇧🇷 Português
@@ -512,6 +544,38 @@ Documentação de referência:
 
 - Spec: [`docs/superpowers/specs/2026-05-06-sso-auth-design.md`](docs/superpowers/specs/2026-05-06-sso-auth-design.md)
 - Plan: [`docs/superpowers/plans/2026-05-06-auth-api-core.md`](docs/superpowers/plans/2026-05-06-auth-api-core.md)
+
+### Gateway (YARP)
+
+O `Gateway` é o **ingress único** do backend. Fica na frente de `Auth.API` e `Web.API`, valida reference tokens opacos via `POST /connect/introspect`, cacheia o resultado em Redis e encaminha uma identidade normalizada para os serviços downstream.
+
+Destaques:
+
+- Construído sobre **YARP**, com todas as rotas / clusters bound a partir da configuração `ReverseProxy:*` (env-var friendly, ver `compose.yaml`).
+- Roteia clientes externos para Auth.API (`/api/auth/.well-known/*`, `/api/auth/connect/*`) e Web.API (`/api/v1/*`).
+- Valida tokens via o endpoint **OpenIddict introspection** com **cache em Redis** (TTL default de 30s) — drop-in replacement para evitar martelar a Auth.API a cada request.
+- Encaminha a identidade canônica para os serviços downstream via headers `X-Forwarded-User` e `X-Forwarded-TenantId` (consumidos pela Web.API no Plan 5).
+- Health checks: `/health/live` (processo) e `/health/ready` (Redis + discovery da Auth.API).
+
+Executando localmente:
+
+```bash
+docker compose up -d redis auth-postgres auth.api gateway
+# Gateway discovery (proxied)  → http://localhost:5200/api/auth/.well-known/openid-configuration
+# Gateway health (live/ready)  → http://localhost:5200/health/live
+```
+
+Variáveis de ambiente requeridas (ver `compose.yaml` e §9 do `CLAUDE.md`):
+
+- `Auth__Authority`, `Auth__IntrospectionEndpoint`
+- `Auth__IntrospectionClientId` (default `gateway`) e `Auth__IntrospectionClientSecret` (`OPENIDDICT_GATEWAY_SECRET`)
+- `Redis__ConnectionString`
+- `IntrospectionCache__TtlSeconds` (default `30`)
+- `ReverseProxy__Routes__*` e `ReverseProxy__Clusters__*` para o roteamento YARP
+
+Documentação de referência:
+
+- Plan: [`docs/superpowers/plans/2026-05-07-gateway-yarp.md`](docs/superpowers/plans/2026-05-07-gateway-yarp.md)
 
 ---
 
