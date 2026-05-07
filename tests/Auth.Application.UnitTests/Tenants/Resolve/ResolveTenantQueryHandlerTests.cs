@@ -23,6 +23,7 @@ public class ResolveTenantQueryHandlerTests
         result.IsSuccess.ShouldBeTrue();
         result.Value.Id.ShouldBe(tenant.Id);
         result.Value.EntraTenantId.ShouldBe(entraTenantId);
+        result.Value.IsActive.ShouldBeTrue();
     }
 
     [Fact]

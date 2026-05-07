@@ -11,5 +11,4 @@ public enum AuthAuditEventType
     RoleRevoked,
     GroupCreated,
     M2MTokenIssued,
-    TokenRevoked,
 }

@@ -1,6 +1,7 @@
 using Auth.Application.Abstractions.Messaging;
-using Auth.Domain.Tenants;
 
 namespace Auth.Application.Tenants.Resolve;
 
-public sealed record ResolveTenantQuery(Guid EntraTenantId) : IQuery<Tenant>;
+public sealed record ResolveTenantResponse(Guid Id, Guid EntraTenantId, bool IsActive);
+
+public sealed record ResolveTenantQuery(Guid EntraTenantId) : IQuery<ResolveTenantResponse>;

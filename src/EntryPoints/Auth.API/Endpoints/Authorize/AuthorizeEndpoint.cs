@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 using Auth.API.Authentication;
 using Auth.API.Telemetry;
 using Auth.Application.Abstractions.Data;
@@ -17,6 +18,9 @@ namespace Auth.API.Endpoints.Authorize;
 
 internal sealed class AuthorizeEndpoint : IEndpoint
 {
+    private const int MaxUserAgentLength = 500;
+    private const int MaxIpLength = 45;
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapMethods("/connect/authorize", ["GET", "POST"], AuthorizeAsync);
@@ -24,7 +28,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
 
     private static async Task<IResult> AuthorizeAsync(
         HttpContext http,
-        IQueryHandler<ResolveTenantQuery, Auth.Domain.Tenants.Tenant> resolveTenant,
+        IQueryHandler<ResolveTenantQuery, ResolveTenantResponse> resolveTenant,
         ICommandHandler<SyncEntraUserCommand, Guid> syncUser,
         IPermissionResolver permissions,
         IAuthDbContext db,
@@ -54,8 +58,8 @@ internal sealed class AuthorizeEndpoint : IEndpoint
                      ?? principal.FindFirstValue(ClaimTypes.Email);
         string displayName = principal.FindFirstValue("name") ?? email ?? "unknown";
 
-        string ip = http.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
-        string userAgent = http.Request.Headers.UserAgent.ToString();
+        string ip = Truncate(http.Connection.RemoteIpAddress?.ToString() ?? string.Empty, MaxIpLength);
+        string userAgent = Truncate(http.Request.Headers.UserAgent.ToString(), MaxUserAgentLength);
 
         if (!Guid.TryParse(tidStr, out Guid tid)
          || !Guid.TryParse(oidStr, out Guid oid)
@@ -63,7 +67,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         {
             await WriteAuditAsync(db, Guid.Empty, null,
                 AuthAuditEventType.LoginFailed, ip, userAgent,
-                "{\"reason\":\"invalid_entra_claims\"}", ct);
+                JsonSerializer.Serialize(new { reason = "invalid_entra_claims" }), ct);
             return Results.Forbid();
         }
 
@@ -75,7 +79,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         {
             await WriteAuditAsync(db, Guid.Empty, null,
                 AuthAuditEventType.LoginFailed, ip, userAgent,
-                $"{{\"reason\":\"{tenantR.Error.Code}\"}}", ct);
+                JsonSerializer.Serialize(new { reason = tenantR.Error.Code }), ct);
             return Results.Forbid();
         }
 
@@ -87,7 +91,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         {
             await WriteAuditAsync(db, tenantR.Value.Id, null,
                 AuthAuditEventType.LoginFailed, ip, userAgent,
-                $"{{\"reason\":\"{userR.Error.Code}\"}}", ct);
+                JsonSerializer.Serialize(new { reason = userR.Error.Code }), ct);
             return Results.Forbid();
         }
 
@@ -122,12 +126,14 @@ internal sealed class AuthorizeEndpoint : IEndpoint
 
         await WriteAuditAsync(db, tenantR.Value.Id, userR.Value,
             AuthAuditEventType.LoginSucceeded, ip, userAgent,
-            $"{{\"email\":\"{email}\"}}", ct);
+            JsonSerializer.Serialize(new { email }), ct);
 
         return Results.SignIn(
             claimsPrincipal,
             authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
+
+    private static string Truncate(string s, int max) => s.Length > max ? s[..max] : s;
 
     private static async Task WriteAuditAsync(
         IAuthDbContext db,

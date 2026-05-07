@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 using Auth.API.Telemetry;
 using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
@@ -15,6 +16,11 @@ namespace Auth.API.Endpoints.Token;
 
 internal sealed class TokenEndpoint : IEndpoint
 {
+    private const int MaxUserAgentLength = 500;
+    private const int MaxIpLength = 45;
+
+    private static string Truncate(string s, int max) => s.Length > max ? s[..max] : s;
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/connect/token", TokenAsync);
@@ -115,15 +121,15 @@ internal sealed class TokenEndpoint : IEndpoint
             var principal = new ClaimsPrincipal(identity);
             principal.SetScopes(allowed);
 
-            string ip = http.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
-            string userAgent = http.Request.Headers.UserAgent.ToString();
+            string ip = Truncate(http.Connection.RemoteIpAddress?.ToString() ?? string.Empty, MaxIpLength);
+            string userAgent = Truncate(http.Request.Headers.UserAgent.ToString(), MaxUserAgentLength);
             db.AuditEvents.Add(AuthAuditEvent.Record(
                 clientR.Value.TenantId,
                 userId: null,
                 AuthAuditEventType.M2MTokenIssued,
                 ip,
                 userAgent,
-                detail: $"{{\"client_id\":\"{request.ClientId}\"}}"));
+                detail: JsonSerializer.Serialize(new { client_id = request.ClientId })));
             await db.SaveChangesAsync(ct);
 
             return Results.SignIn(

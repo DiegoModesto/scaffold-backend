@@ -20,7 +20,7 @@ public sealed class DependencyInjectionTests
 
         var sp = services.BuildServiceProvider();
 
-        var handler = sp.GetService<IQueryHandler<ResolveTenantQuery, Auth.Domain.Tenants.Tenant>>();
+        var handler = sp.GetService<IQueryHandler<ResolveTenantQuery, ResolveTenantResponse>>();
         handler.ShouldNotBeNull();
     }
 }
