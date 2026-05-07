@@ -6,6 +6,7 @@ using StackExchange.Redis;
 using Web.Blazor.Authentication;
 using Web.Blazor.Authentication.TokenStore;
 using Web.Blazor.Components;
+using Web.Blazor.Gateway;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,14 @@ builder.Services.AddSingleton<ITokenStore, RedisTokenStore>();
 
 builder.Services.AddBffAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<IAdminGatewayClient, AdminGatewayClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Gateway:BaseUrl"]
+        ?? throw new InvalidOperationException("Gateway:BaseUrl is required."));
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
