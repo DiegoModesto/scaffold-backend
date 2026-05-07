@@ -12,6 +12,10 @@ public static class UserErrors
         "User.NetSuiteEmailMissing",
         "The user does not have a NetSuite email configured.");
 
+    public static readonly Error EmailAlreadyTaken = Error.Conflict(
+        "User.EmailAlreadyTaken",
+        "A user with the same email already exists in this tenant.");
+
     public static Error NotFound(Guid id) => Error.NotFound(
         "User.NotFound",
         $"The user with id '{id}' was not found.");
