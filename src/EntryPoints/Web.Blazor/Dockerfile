@@ -3,7 +3,6 @@ USER root
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -12,6 +11,8 @@ COPY ["Directory.Packages.props", "."]
 COPY ["Directory.Build.props", "."]
 COPY ["src/EntryPoints/Web.Blazor/Web.Blazor.csproj", "src/EntryPoints/Web.Blazor/"]
 COPY ["src/Infra/Infra.csproj", "src/Infra/"]
+# Web.Blazor no longer references Application directly, but Infra still does — keep
+# the csproj available so `dotnet restore` can resolve the transitive graph.
 COPY ["src/Application/Application.csproj", "src/Application/"]
 COPY ["src/Domain/Domain.csproj", "src/Domain/"]
 COPY ["src/SharedKernel/SharedKernel.csproj", "src/SharedKernel/"]
