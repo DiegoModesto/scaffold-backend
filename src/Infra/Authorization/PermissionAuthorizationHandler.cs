@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 
-namespace Auth.API.Authorization;
+namespace Infra.Authorization;
 
-internal sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
+public sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        var has = context.User.Claims.Any(c =>
+        bool has = context.User.Claims.Any(c =>
             c.Type == "permission" && c.Value == requirement.Permission);
         if (has)
         {

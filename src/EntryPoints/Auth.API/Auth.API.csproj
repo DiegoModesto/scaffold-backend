@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Auth.Application\Auth.Application.csproj" />
     <ProjectReference Include="..\..\Auth.Infra\Auth.Infra.csproj" />
+    <ProjectReference Include="..\..\Infra\Infra.csproj" />
     <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
   <ItemGroup>
