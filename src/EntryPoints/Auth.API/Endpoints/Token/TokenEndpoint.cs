@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Auth.API.Telemetry;
+using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.M2MClients.Authenticate;
+using Auth.Domain.Audit;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Abstractions;
@@ -22,6 +24,7 @@ internal sealed class TokenEndpoint : IEndpoint
         HttpContext http,
         ICommandHandler<AuthenticateM2MClientCommand, M2MClientAuthenticated> authenticateM2M,
         IPermissionResolver permissions,
+        IAuthDbContext db,
         CancellationToken ct)
     {
         OpenIddictRequest request = http.GetOpenIddictServerRequest()
@@ -111,6 +114,17 @@ internal sealed class TokenEndpoint : IEndpoint
 
             var principal = new ClaimsPrincipal(identity);
             principal.SetScopes(allowed);
+
+            string ip = http.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+            string userAgent = http.Request.Headers.UserAgent.ToString();
+            db.AuditEvents.Add(AuthAuditEvent.Record(
+                clientR.Value.TenantId,
+                userId: null,
+                AuthAuditEventType.M2MTokenIssued,
+                ip,
+                userAgent,
+                detail: $"{{\"client_id\":\"{request.ClientId}\"}}"));
+            await db.SaveChangesAsync(ct);
 
             return Results.SignIn(
                 principal,

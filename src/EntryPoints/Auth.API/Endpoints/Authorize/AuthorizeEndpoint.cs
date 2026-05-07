@@ -2,10 +2,12 @@ using System.Diagnostics;
 using System.Security.Claims;
 using Auth.API.Authentication;
 using Auth.API.Telemetry;
+using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Tenants.Resolve;
 using Auth.Application.Users.SyncEntra;
+using Auth.Domain.Audit;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Abstractions;
@@ -25,6 +27,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         IQueryHandler<ResolveTenantQuery, Auth.Domain.Tenants.Tenant> resolveTenant,
         ICommandHandler<SyncEntraUserCommand, Guid> syncUser,
         IPermissionResolver permissions,
+        IAuthDbContext db,
         CancellationToken ct)
     {
         using Activity? activity = AuthActivitySource.Instance.StartActivity("Authorize");
@@ -51,10 +54,16 @@ internal sealed class AuthorizeEndpoint : IEndpoint
                      ?? principal.FindFirstValue(ClaimTypes.Email);
         string displayName = principal.FindFirstValue("name") ?? email ?? "unknown";
 
+        string ip = http.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        string userAgent = http.Request.Headers.UserAgent.ToString();
+
         if (!Guid.TryParse(tidStr, out Guid tid)
          || !Guid.TryParse(oidStr, out Guid oid)
          || string.IsNullOrWhiteSpace(email))
         {
+            await WriteAuditAsync(db, Guid.Empty, null,
+                AuthAuditEventType.LoginFailed, ip, userAgent,
+                "{\"reason\":\"invalid_entra_claims\"}", ct);
             return Results.Forbid();
         }
 
@@ -64,6 +73,9 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         var tenantR = await resolveTenant.Handle(new ResolveTenantQuery(tid), ct);
         if (tenantR.IsFailure)
         {
+            await WriteAuditAsync(db, Guid.Empty, null,
+                AuthAuditEventType.LoginFailed, ip, userAgent,
+                $"{{\"reason\":\"{tenantR.Error.Code}\"}}", ct);
             return Results.Forbid();
         }
 
@@ -73,6 +85,9 @@ internal sealed class AuthorizeEndpoint : IEndpoint
             new SyncEntraUserCommand(tenantR.Value.Id, oid, email, displayName), ct);
         if (userR.IsFailure)
         {
+            await WriteAuditAsync(db, tenantR.Value.Id, null,
+                AuthAuditEventType.LoginFailed, ip, userAgent,
+                $"{{\"reason\":\"{userR.Error.Code}\"}}", ct);
             return Results.Forbid();
         }
 
@@ -105,8 +120,26 @@ internal sealed class AuthorizeEndpoint : IEndpoint
         var claimsPrincipal = new ClaimsPrincipal(identity);
         claimsPrincipal.SetScopes(request.GetScopes());
 
+        await WriteAuditAsync(db, tenantR.Value.Id, userR.Value,
+            AuthAuditEventType.LoginSucceeded, ip, userAgent,
+            $"{{\"email\":\"{email}\"}}", ct);
+
         return Results.SignIn(
             claimsPrincipal,
             authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    private static async Task WriteAuditAsync(
+        IAuthDbContext db,
+        Guid tenantId,
+        Guid? userId,
+        AuthAuditEventType eventType,
+        string ip,
+        string userAgent,
+        string detail,
+        CancellationToken ct)
+    {
+        db.AuditEvents.Add(AuthAuditEvent.Record(tenantId, userId, eventType, ip, userAgent, detail));
+        await db.SaveChangesAsync(ct);
     }
 }

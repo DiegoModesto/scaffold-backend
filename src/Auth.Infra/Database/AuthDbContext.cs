@@ -66,6 +66,14 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options, ITena
                 continue;
             }
 
+            // Audit events are written by Auth.API endpoints (e.g. /connect/authorize) that
+            // resolve a tenant before the principal carries a tenant_id claim. Exclude them
+            // from the guard — their TenantId is sourced from the resolved tenant directly.
+            if (entry.Entity is AuthAuditEvent)
+            {
+                continue;
+            }
+
             var tenantProperty = entry.Metadata.FindProperty("TenantId");
             if (tenantProperty is null)
             {
