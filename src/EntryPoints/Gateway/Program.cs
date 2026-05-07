@@ -1,3 +1,4 @@
+using Gateway;
 using Infra.Observability;
 using Serilog;
 
@@ -12,12 +13,17 @@ builder.Services.AddOpenTelemetryObservability(
     includeAspNetCore: true,
     additionalActivitySources: "Gateway");
 
+builder.Services.AddGatewayAuthentication(builder.Configuration);
+
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 app.MapReverseProxy();
 
