@@ -12,6 +12,17 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
 
     public SampleEntityEndpointTests(CustomWebApplicationFactory factory) => _factory = factory;
 
+    private HttpClient CreateAuthenticatedClient(
+        out Guid tenantId,
+        params string[] permissions)
+    {
+        tenantId = Guid.NewGuid();
+        string token = _factory.IssueTestToken(tenantId, "integration-user", permissions);
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
     [Fact]
     public async Task Create_Should_Return401_WhenNoToken()
     {
@@ -27,9 +38,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task Create_Should_Return400_WhenPayloadInvalid()
     {
-        HttpClient client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
+        HttpClient client = CreateAuthenticatedClient(out _, "sample.write");
 
         HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/v1/sample-entities",
@@ -41,9 +50,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task Create_Should_Return201_AndAllow_Retrieval()
     {
-        HttpClient client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
+        HttpClient client = CreateAuthenticatedClient(out _, "sample.read", "sample.write");
 
         HttpResponseMessage create = await client.PostAsJsonAsync(
             "/api/v1/sample-entities",
@@ -70,9 +77,7 @@ public class SampleEntityEndpointTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task Get_Should_Return404_WhenNotFound()
     {
-        HttpClient client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CustomWebApplicationFactory.CreateBearerToken());
+        HttpClient client = CreateAuthenticatedClient(out _, "sample.read");
 
         HttpResponseMessage response = await client.GetAsync($"/api/v1/sample-entities/{Guid.NewGuid()}");
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
