@@ -25,4 +25,7 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Auth.API.IntegrationTests" />
+  </ItemGroup>
 </Project>
