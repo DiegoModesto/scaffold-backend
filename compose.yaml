@@ -153,6 +153,10 @@ services:
       - ReverseProxy__Routes__auth-connect__ClusterId=auth-cluster
       - ReverseProxy__Routes__auth-connect__Match__Path=/api/auth/connect/{**catch-all}
       - ReverseProxy__Routes__auth-connect__Transforms__0__PathRemovePrefix=/api/auth
+      - ReverseProxy__Routes__auth-admin__ClusterId=auth-cluster
+      - ReverseProxy__Routes__auth-admin__Match__Path=/api/auth/admin/{**catch-all}
+      - ReverseProxy__Routes__auth-admin__AuthorizationPolicy=RequireBearer
+      - ReverseProxy__Routes__auth-admin__Transforms__0__PathRemovePrefix=/api/auth
       - ReverseProxy__Routes__web-api__ClusterId=web-api-cluster
       - ReverseProxy__Routes__web-api__Match__Path=/api/v1/{**catch-all}
       - ReverseProxy__Routes__web-api__AuthorizationPolicy=RequireBearer
