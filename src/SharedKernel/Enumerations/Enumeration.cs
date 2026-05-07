@@ -1,7 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace SharedKernel.Enumerations;
 
+[SuppressMessage("Major Code Smell", "S4035:Classes implementing 'IEquatable<T>' should be sealed",
+    Justification = "Enumeration<TEnum> is the abstract base of the Enumeration pattern; equality is by (Value, Name) which is invariant across derived types.")]
 public abstract class Enumeration<TEnum> : IEquatable<Enumeration<TEnum>>
     where TEnum : Enumeration<TEnum>
 {

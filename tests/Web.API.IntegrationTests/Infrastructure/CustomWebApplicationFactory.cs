@@ -87,7 +87,7 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
-    public string CreateBearerToken(string userId = "integration-user")
+    public static string CreateBearerToken(string userId = "integration-user")
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtSecret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

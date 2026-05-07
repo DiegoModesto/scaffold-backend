@@ -13,7 +13,8 @@ public static class OpenTelemetryExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         string serviceName,
-        bool includeAspNetCore = false)
+        bool includeAspNetCore = false,
+        params string[] additionalActivitySources)
     {
         string? otlpEndpoint = configuration["OpenTelemetry:OtlpEndpoint"]
             ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
@@ -32,6 +33,11 @@ public static class OpenTelemetryExtensions
                     .AddHttpClientInstrumentation()
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddNpgsql();
+
+                if (additionalActivitySources is { Length: > 0 })
+                {
+                    tracing.AddSource(additionalActivitySources);
+                }
 
                 if (includeAspNetCore)
                 {

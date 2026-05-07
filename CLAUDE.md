@@ -15,7 +15,7 @@ This file is the **single source of truth for AI coding agents** (Claude Code, C
 - Target framework: `net10.0` (pinned by `global.json`, SDK 10.0.203+)
 - Central Package Management: all versions live in `Directory.Packages.props`
 - NuGet packages restore into a repo-local `.nuget-cache/` folder (configured in `nuget.config`, gitignored). This avoids permission issues with the global `~/.nuget/packages/` cache and keeps installs reproducible per checkout. Delete the folder to force a clean restore.
-- Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler).
+- Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler), `Auth.API` (standalone identity service — separate bounded context with its own DB).
 
 ---
 
@@ -96,20 +96,38 @@ src/
     ├── CronJobs/                    # BackgroundService + Cronos scheduler — internal polling, publishes events
     │   ├── Jobs/                    # CronBackgroundService, SampleCronJob, SamplePollingJob (publish example)
     │   └── Dockerfile
-    └── Worker/                      # RabbitMQ consumer — extend with one consumer per queue/topic
-        ├── Messaging/               # SampleMessageConsumer (uses Infra.Messaging primitives)
-        └── Dockerfile
+    ├── Worker/                      # RabbitMQ consumer — extend with one consumer per queue/topic
+    │   ├── Messaging/               # SampleMessageConsumer (uses Infra.Messaging primitives)
+    │   └── Dockerfile
+    └── Auth.API/                    # Standalone identity service — separate bounded context
+        ├── Authentication/          # OIDC + OpenIddict wiring
+        ├── Endpoints/               # /connect/* endpoints (authorize, token, introspect, userinfo, logout)
+        ├── Extensions/              # Service collection + endpoint extensions
+        ├── Telemetry/               # ActivitySource + audit logging helpers
+        ├── Program.cs               # Composition root (uses Auth.Infra + Auth.Application)
+        ├── Dockerfile
+        ├── appsettings.json         # ⚠️ empty secrets — env vars supply them
+        └── appsettings.Development.json
+
+# Auth bounded context (separate aggregate root + dedicated Postgres + Redis cache)
+src/Auth.Domain/                     # Tenants, Users, Roles, Permissions aggregates
+src/Auth.Application/                # Auth use cases (sign-in, JIT provisioning, introspection)
+src/Auth.Infra/                      # AuthDbContext, OpenIddict EF stores, Redis cache, hosted seeders
+                                     #   (OpenIddictClientSeedHostedService, PermissionSeedHostedService)
 
 tests/
 ├── Domain.UnitTests/                # Pure domain tests
 ├── Application.UnitTests/
 │   ├── Behaviors/                   # ValidationDecoratorTests
 │   └── SampleEntities/              # Handler + Validator tests
-└── Web.API.IntegrationTests/
-    ├── Architecture/                # NetArchTest rules
-    ├── Endpoints/                   # End-to-end via WebApplicationFactory
-    ├── Infrastructure/              # CustomWebApplicationFactory (EF InMemory + JWT)
-    └── Middleware/                  # GlobalExceptionHandlingMiddleware tests
+├── Web.API.IntegrationTests/
+│   ├── Architecture/                # NetArchTest rules (covers Auth.* projects too)
+│   ├── Endpoints/                   # End-to-end via WebApplicationFactory
+│   ├── Infrastructure/              # CustomWebApplicationFactory (EF InMemory + JWT)
+│   └── Middleware/                  # GlobalExceptionHandlingMiddleware tests
+├── Auth.Domain.UnitTests/           # Auth aggregate tests
+├── Auth.Application.UnitTests/      # Auth handler/validator tests
+└── Auth.API.IntegrationTests/       # WebApplicationFactory + Postgres/Redis Testcontainers + WireMock Entra
 ```
 
 ---
@@ -351,6 +369,11 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
    - `JWT_SECRET` (must be ≥ 32 bytes UTF-8 — `Infra.DependencyInjection` fails at startup otherwise)
    - `DB_CONNECTION_STRING`
    - `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`
+   - **Auth.API**:
+     - `AUTH_DB_CONNECTION_STRING` (or `ConnectionStrings__AuthDb`) — dedicated Postgres for the auth bounded context
+     - `Redis__ConnectionString` (or `REDIS_CONNECTION_STRING`)
+     - `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_AUTHORITY` — Microsoft Entra ID (OIDC) federation
+     - `OPENIDDICT_BFF_SECRET`, `OPENIDDICT_WEB_API_SECRET`, `OPENIDDICT_GATEWAY_SECRET` — client secrets seeded into OpenIddict applications. **In production these MUST fail-fast at startup if missing or using a default value.**
 2. **Every endpoint** gets `.RequireAuthorization()` by default. If an endpoint must be public, call `.AllowAnonymous()` and explain why in the PR.
 3. **No raw SQL with string concatenation.** EF Core parameterises automatically; use `FromSqlInterpolated` if you need raw SQL.
 4. **Never return domain entities from endpoints.** Always project into a DTO / response record.
@@ -394,6 +417,15 @@ Cross-cutting RabbitMQ infrastructure lives here so all four entrypoints share i
 - Inherit `BackgroundService`. Example: `Messaging/SampleMessageConsumer.cs`.
 - Use the async RabbitMQ.Client 7.x API (`IChannel`, `BasicConsumeAsync`, `AsyncEventingBasicConsumer`).
 - Connection config lives in `RabbitMqOptions` bound from `RabbitMq:*` config.
+
+### Auth.API (`src/EntryPoints/Auth.API`)
+
+- Standalone identity service — does **not** share `ApplicationDbContext` with the rest of the scaffold. Owns its own Postgres database (`auth_db`) via `AuthDbContext` in `src/Auth.Infra`, plus a Redis cache for session/token lookups.
+- Federates Microsoft Entra ID (OIDC) for human users and issues opaque reference tokens validated through `/connect/introspect`.
+- Two hosted services run at startup and seed required state idempotently:
+  - `OpenIddictClientSeedHostedService` — seeds the BFF, Web.API, and Gateway OpenIddict applications using the `OPENIDDICT_*_SECRET` env vars.
+  - `PermissionSeedHostedService` — seeds default roles + permissions into `auth_db`.
+- Architecture rules also cover `Auth.Domain` / `Auth.Application` / `Auth.Infra` — see `tests/Web.API.IntegrationTests/Architecture/ArchitectureTests.cs`.
 
 ### Web.Blazor (`src/EntryPoints/Web.Blazor`)
 
@@ -460,6 +492,10 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | Moq `Can not create proxy for type ... not accessible` | Private/nested test types | Make them `public` or skip Moq (use a hand-rolled stub) |
 | Handler is not registered | Returning `internal sealed class` handler | Make it `public sealed class` (Scrutor scans, but DI resolves via the interface) |
 | `CS1061: 'Result<T>' does not contain 'Match'` | Missing `using Web.API.Extensions;` | Add the import |
+| OpenIddict reference token returns `active=false` on introspection | Token expired or resource server client not seeded | Check token TTL and that the resource server client (`web-api`/`gateway`) is correctly seeded by `OpenIddictClientSeedHostedService` |
+| Entra `tid` claim missing on principal | Authority misconfigured or strict issuer validation | Verify `Entra:Authority` and that `ValidateIssuer = false` (we accept multi-tenant tokens and validate via our `Tenants` table) |
+| Auth.API fails to start with `OpenIddict has not been registered as a default identifier generator` | Migration not applied | Apply migrations — the `InitialAuthSchema` migration includes the OpenIddict EF tables |
+| TestServer cannot reach Entra over HTTPS | OIDC discovery requires HTTPS by default | Set `OpenIdConnectOptions.RequireHttpsMetadata = false` in dev/test only |
 
 ---
 

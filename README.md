@@ -225,6 +225,39 @@ flowchart LR
 5. Inject the **interface** (not the concrete handler) so the ValidationDecorator runs
 6. Write unit tests in `Application.UnitTests` + integration tests in `Web.API.IntegrationTests`
 
+### Authentication (Auth.API)
+
+`Auth.API` is a **standalone identity service** running as its own bounded context, with a dedicated Postgres database (`auth_db`) and Redis cache. It is independent from the rest of the scaffold's `ApplicationDbContext` and is composed of `Auth.Domain` + `Auth.Application` + `Auth.Infra`.
+
+Highlights:
+
+- Federates **Microsoft Entra ID (OIDC)** for human users.
+- Issues **opaque reference tokens** — resource servers validate them through `POST /connect/introspect`.
+- **Multi-tenant** with **JIT (Just-In-Time) user provisioning** based on the Entra `tid` claim and a local `Tenants` table.
+- Built on **OpenIddict** as the OAuth2 / OIDC server, with EF Core stores in `auth_db`.
+- **SAML SSO to NetSuite** is planned in Plan 4 of the auth roadmap.
+- Hosted services seed OpenIddict clients (`bff-blazor`, `web-api`, `gateway`) and default permissions on startup.
+
+Run it locally:
+
+```bash
+docker compose up -d auth-postgres redis auth.api
+# Auth.API discovery → http://localhost:5100/.well-known/openid-configuration
+# Auth.API health    → http://localhost:5100/health/live
+```
+
+Required environment variables (see also the table above):
+
+- `ConnectionStrings__AuthDb` (or `AUTH_DB_CONNECTION_STRING`)
+- `Redis__ConnectionString`
+- `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_AUTHORITY`
+- `OPENIDDICT_BFF_SECRET`, `OPENIDDICT_WEB_API_SECRET`, `OPENIDDICT_GATEWAY_SECRET`
+
+Reference docs:
+
+- Spec: [`docs/superpowers/specs/2026-05-06-sso-auth-design.md`](docs/superpowers/specs/2026-05-06-sso-auth-design.md)
+- Plan: [`docs/superpowers/plans/2026-05-06-auth-api-core.md`](docs/superpowers/plans/2026-05-06-auth-api-core.md)
+
 ---
 
 ## 🇧🇷 Português
@@ -446,6 +479,39 @@ flowchart LR
 4. Adicione um endpoint em `src/EntryPoints/Web.API/Endpoints/<Feature>/` implementando `IEndpoint` (ou injete o handler em um componente Razor para Web.Blazor)
 5. Injete a **interface** (e não o handler concreto) para que o `ValidationDecorator` seja aplicado
 6. Escreva testes em `Application.UnitTests` e testes de integração em `Web.API.IntegrationTests`
+
+### Autenticação (Auth.API)
+
+O `Auth.API` é um **serviço de identidade standalone**, rodando como um bounded context separado, com banco Postgres dedicado (`auth_db`) e cache Redis. Não compartilha o `ApplicationDbContext` do restante do scaffold e é composto por `Auth.Domain` + `Auth.Application` + `Auth.Infra`.
+
+Destaques:
+
+- Federação com **Microsoft Entra ID (OIDC)** para usuários humanos.
+- Emite **reference tokens opacos** — resource servers validam via `POST /connect/introspect`.
+- **Multi-tenant** com **provisionamento JIT (Just-In-Time)** baseado no claim `tid` do Entra e na tabela local `Tenants`.
+- Construído em cima do **OpenIddict** como servidor OAuth2 / OIDC, com stores em EF Core no `auth_db`.
+- **SSO SAML para NetSuite** está planejado no Plan 4 do roadmap de auth.
+- Hosted services semeiam clientes OpenIddict (`bff-blazor`, `web-api`, `gateway`) e permissões default no startup.
+
+Executando localmente:
+
+```bash
+docker compose up -d auth-postgres redis auth.api
+# Auth.API discovery → http://localhost:5100/.well-known/openid-configuration
+# Auth.API health    → http://localhost:5100/health/live
+```
+
+Variáveis de ambiente requeridas (ver também a tabela acima):
+
+- `ConnectionStrings__AuthDb` (ou `AUTH_DB_CONNECTION_STRING`)
+- `Redis__ConnectionString`
+- `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_AUTHORITY`
+- `OPENIDDICT_BFF_SECRET`, `OPENIDDICT_WEB_API_SECRET`, `OPENIDDICT_GATEWAY_SECRET`
+
+Documentação de referência:
+
+- Spec: [`docs/superpowers/specs/2026-05-06-sso-auth-design.md`](docs/superpowers/specs/2026-05-06-sso-auth-design.md)
+- Plan: [`docs/superpowers/plans/2026-05-06-auth-api-core.md`](docs/superpowers/plans/2026-05-06-auth-api-core.md)
 
 ---
 
