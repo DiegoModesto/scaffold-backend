@@ -8,8 +8,8 @@ public static class PermissionCodes
     public const string GroupsWrite = "groups.write";
     public const string RolesRead = "roles.read";
     public const string RolesWrite = "roles.write";
-    public const string M2MClientsRead = "m2m-clients.read";
-    public const string M2MClientsWrite = "m2m-clients.write";
+    public const string M2MClientsRead = "m2mclients.read";
+    public const string M2MClientsWrite = "m2mclients.write";
     public const string AuditRead = "audit.read";
 
     public static IReadOnlyCollection<(string Code, string Description)> All { get; } =
