@@ -5,19 +5,27 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
+      - auth.api
     build:
       context: .
       dockerfile: src/EntryPoints/Web.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=base_scaffold;Username=postgres;Password=postgres;
-      - JWT_SECRET=dev-only-secret-change-me-please-32bytes-minimum!!
+      - Auth__Authority=http://auth.api:8080
+      - Auth__IntrospectionEndpoint=http://auth.api:8080/connect/introspect
+      - Auth__IntrospectionClientId=web-api
+      - Auth__IntrospectionClientSecret=${OPENIDDICT_WEB_API_SECRET:-dev-only-web-api-secret-change-me}
+      - Redis__ConnectionString=redis:6379
+      - IntrospectionCache__TtlSeconds=30
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=guest
       - RABBITMQ_PASSWORD=guest
+    # Host port retained for V1 dev convenience; production deployments should remove this
+    # so Web.API is reachable only through the gateway.
     ports:
       - "5010:8080"
-      - "5011:8081"
 
   worker:
     image: ${DOCKER_REGISTRY-}worker
