@@ -27,5 +27,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Auth.API" />
     <InternalsVisibleTo Include="Auth.API.IntegrationTests" />
+    <InternalsVisibleTo Include="Auth.Application.UnitTests" />
   </ItemGroup>
 </Project>
