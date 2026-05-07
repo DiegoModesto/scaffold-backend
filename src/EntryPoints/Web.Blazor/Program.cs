@@ -1,25 +1,17 @@
-using Application;
-using Infra;
-using Infra.Extensions;
 using Infra.Observability;
 using Serilog;
 using Web.Blazor.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.MapEnvironmentVariables();
-
 builder.Host.UseSerilog((context, loggerConfig) =>
     loggerConfig.ReadFrom.Configuration(context.Configuration));
 
+builder.Services
+    .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.Blazor", includeAspNetCore: true);
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-
-builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration)
-    .AddInfrastructureMessaging(builder.Configuration)
-    .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.Blazor", includeAspNetCore: true);
 
 WebApplication app = builder.Build();
 
