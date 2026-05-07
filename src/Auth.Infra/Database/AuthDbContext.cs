@@ -36,6 +36,12 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options, ITena
 
         modelBuilder.HasDefaultSchema(Schemas.Auth);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
+
+        // Register OpenIddict's EF Core entities (applications, authorizations, scopes, tokens)
+        // into our model. Without this, IOpenIddictApplicationManager fails at runtime with
+        // "Cannot create a DbSet for 'OpenIddictEntityFrameworkCoreApplication' because this
+        // type is not included in the model for the context."
+        modelBuilder.UseOpenIddict();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

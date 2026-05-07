@@ -20,7 +20,8 @@ internal sealed class UserInfoEndpoint : IEndpoint
                 permission = user.FindAll("permission").Select(c => c.Value).ToArray()
             });
         })
-        .RequireAuthorization(b =>
-            b.AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme));
+        .RequireAuthorization(b => b
+            .AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser());
     }
 }
