@@ -36,7 +36,12 @@ internal static class DependencyInjection
 
         services.AddEntraExternal(configuration);
 
-        services.AddAuthorization();
+        services.AddAuthorization(opt =>
+        {
+            opt.AddPolicy(
+                Endpoints.Saml.SamlAuthorizationPolicies.NetSuiteInitiate,
+                Endpoints.Saml.SamlAuthorizationPolicies.NetSuiteInitiatePolicy);
+        });
         services.AddSingleton<IAuthorizationPolicyProvider, Authorization.PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, Authorization.PermissionAuthorizationHandler>();
 
