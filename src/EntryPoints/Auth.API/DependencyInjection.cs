@@ -2,6 +2,7 @@ using System.Reflection;
 using Auth.API.Authentication;
 using Auth.API.Extensions;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Auth.API;
 
@@ -36,6 +37,8 @@ internal static class DependencyInjection
         services.AddEntraExternal(configuration);
 
         services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, Authorization.PermissionPolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler, Authorization.PermissionAuthorizationHandler>();
 
         services.AddHealthChecks()
             .AddNpgSql(
