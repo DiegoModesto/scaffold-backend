@@ -69,7 +69,7 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.7" />
     <!-- Tests -->
-    <PackageVersion Include="WireMock.Net" Version="1.6.7" />
+    <PackageVersion Include="WireMock.Net" Version="2.5.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.0.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.0.0" />
   </ItemGroup>
