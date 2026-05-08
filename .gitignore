@@ -9,3 +9,4 @@ riderModule.iml
 *.user
 .DS_Store
 .nuget-cache/
+src/EntryPoints/Auth.API/dev-certs/

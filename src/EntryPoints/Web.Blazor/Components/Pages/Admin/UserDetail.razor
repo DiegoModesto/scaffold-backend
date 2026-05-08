@@ -51,6 +51,11 @@
                                 <MudButton Color="Color.Success" Variant="Variant.Outlined" OnClick="EnableAsync">Enable</MudButton>
                             }
                             <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="OpenSetNetSuite">Set NetSuite email</MudButton>
+                            <MudButton Color="Color.Secondary" Variant="Variant.Outlined"
+                                       Href="@($"/admin/users/{Id}/netsuite-redirect")"
+                                       StartIcon="@Icons.Material.Filled.OpenInNew">
+                                Open NetSuite
+                            </MudButton>
                         </PermissionView>
                     </MudCardActions>
                 </MudCard>

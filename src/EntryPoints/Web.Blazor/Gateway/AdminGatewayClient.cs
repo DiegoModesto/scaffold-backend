@@ -188,6 +188,22 @@ internal sealed class AdminGatewayClient(
         return GetAsync<PagedResponse<AuthAuditEventResponse>>($"{AdminBase}/audit-events{query}", ct);
     }
 
+    // ----- NetSuite SAML SSO -----
+    public async Task<string> InitiateNetSuiteSsoAsync(Guid? targetUserId, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/saml/netsuite/initiate");
+        var form = new List<KeyValuePair<string, string>>();
+        if (targetUserId.HasValue)
+        {
+            form.Add(new KeyValuePair<string, string>("target_user_id", targetUserId.Value.ToString()));
+        }
+        req.Content = new FormUrlEncodedContent(form);
+        await AuthorizeAsync(req, ct);
+        using HttpResponseMessage resp = await httpClient.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadAsStringAsync(ct);
+    }
+
     // ----- Internals -----
     private async Task AuthorizeAsync(HttpRequestMessage request, CancellationToken ct)
     {

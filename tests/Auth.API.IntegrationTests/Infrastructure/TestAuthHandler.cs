@@ -76,6 +76,15 @@ internal sealed class TestPermissionPolicyProvider(IOptions<AuthorizationOptions
 {
     public override Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
+        if (policyName == Auth.API.Endpoints.Saml.SamlAuthorizationPolicies.NetSuiteInitiate)
+        {
+            var samlPolicy = new AuthorizationPolicyBuilder()
+                .AddAuthenticationSchemes(TestAuthHandler.SchemeName)
+                .RequireAuthenticatedUser()
+                .Build();
+            return Task.FromResult<AuthorizationPolicy?>(samlPolicy);
+        }
+
         const string prefix = Auth.API.Authorization.PermissionPolicyProvider.PolicyPrefix;
         if (!policyName.StartsWith(prefix, StringComparison.Ordinal))
         {

@@ -1,0 +1,45 @@
+@page "/admin/users/{Id:guid}/netsuite-redirect"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+
+<PageTitle>Opening NetSuite...</PageTitle>
+
+<PermissionView Permission="users.write">
+    @if (string.IsNullOrEmpty(_html))
+    {
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 d-flex align-center" Elevation="0">
+                <MudProgressCircular Indeterminate="true" Class="mr-3" />
+                <MudText Typo="Typo.h6">Opening NetSuite for user...</MudText>
+            </MudPaper>
+        }
+    }
+    else
+    {
+        @((MarkupString)_html)
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private string? _html;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _html = await Client.InitiateNetSuiteSsoAsync(Id, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

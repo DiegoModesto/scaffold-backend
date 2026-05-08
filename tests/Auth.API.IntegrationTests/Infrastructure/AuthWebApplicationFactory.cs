@@ -153,6 +153,13 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
 
             services.RemoveAll<IAuthorizationPolicyProvider>();
             services.AddSingleton<IAuthorizationPolicyProvider, TestPermissionPolicyProvider>();
+
+            // Default stub for INetSuiteSamlSigner so the DI graph validates even before
+            // Auth.Infra registers a concrete implementation. Per-test overrides (via
+            // WithWebHostBuilder) replace this with assertion-bearing stubs.
+            services.RemoveAll<Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner>();
+            services.AddSingleton<Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner>(
+                new ThrowingNetSuiteSamlSigner());
         });
     }
 
@@ -182,6 +189,15 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
     {
         public bool HasTenant => false;
         public Guid TenantId => Guid.Empty;
+    }
+
+    private sealed class ThrowingNetSuiteSamlSigner
+        : Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner
+    {
+        public Auth.Application.NetSuite.InitiateSso.SignedNetSuiteAssertion Sign(
+            string netSuiteEmail, Guid userId, string? relayState) =>
+            throw new InvalidOperationException(
+                "ThrowingNetSuiteSamlSigner: tests must override INetSuiteSamlSigner via WithWebHostBuilder.");
     }
 
     // ---------- WireMock stubs ----------

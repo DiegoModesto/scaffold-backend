@@ -64,6 +64,12 @@ public static class DependencyInjection
         services.AddScoped<IPermissionResolver, PermissionResolver>();
         services.AddSingleton<IClientSecretHasher, Pbkdf2ClientSecretHasher>();
 
+        services.Configure<Auth.Infra.NetSuite.NetSuiteSamlOptions>(
+            configuration.GetSection(Auth.Infra.NetSuite.NetSuiteSamlOptions.SectionName));
+        services.AddScoped<
+            Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner,
+            Auth.Infra.NetSuite.NetSuiteSamlSigner>();
+
         return services;
     }
 }

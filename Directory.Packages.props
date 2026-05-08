@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <!-- Static code analysis -->
@@ -83,5 +84,25 @@
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- Identity (gateway-specific) -->
     <PackageVersion Include="OpenIddict.Validation.SystemNetHttp" Version="6.4.0" />
+    <!-- SAML -->
+    <PackageVersion Include="ITfoxtec.Identity.Saml2" Version="4.17.0" />
+    <PackageVersion Include="ITfoxtec.Identity.Saml2.MvcCore" Version="4.17.0" />
+    <!--
+      ITfoxtec.Identity.Saml2 4.17.0 transitively pulls Microsoft.IdentityModel.* 8.15.0
+      while OpenIddict 6.4.0 transitively pulls 8.12.0. The two ranges resolve to a mix
+      (e.g. Microsoft.IdentityModel.Tokens 8.15.0 alongside JsonWebTokens 8.12.0), and
+      the resulting binary incompatibility silently breaks reference-token introspection
+      (active=false even for fresh tokens). Pinning the whole IdentityModel surface to a
+      single version restores a coherent assembly graph.
+    -->
+    <PackageVersion Include="Microsoft.IdentityModel.Abstractions" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Logging" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens.Saml" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Xml" Version="8.15.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>
 </Project>

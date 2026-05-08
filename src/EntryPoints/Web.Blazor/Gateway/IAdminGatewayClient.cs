@@ -69,6 +69,9 @@ public interface IAdminGatewayClient
 
     Task DeactivateM2MClientAsync(Guid id, CancellationToken ct);
 
+    // NetSuite SAML SSO
+    Task<string> InitiateNetSuiteSsoAsync(Guid? targetUserId, CancellationToken ct);
+
     // Audit
     Task<PagedResponse<AuthAuditEventResponse>> ListAuditEventsAsync(
         int page,

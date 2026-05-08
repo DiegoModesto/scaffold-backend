@@ -399,6 +399,15 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
      - `Auth__ClientSecret` (`OPENIDDICT_BFF_SECRET`) — client secret for code+PKCE+secret
      - `Redis__ConnectionString` — backs the server-side token store, the DataProtection key ring, and the distributed cache
      - `Gateway__BaseUrl` — used by `IAdminGatewayClient` to reach Auth.API admin endpoints (e.g. `http://gateway:8080`)
+   - **NetSuite SAML outbound SSO** (Plan 4 — Auth.API only):
+     - `NetSuite__AccountId` — your NetSuite account number (e.g. `1234567`)
+     - `NetSuite__SamlAcsUrl` — `https://system.netsuite.com/saml2/acs?account={AccountId}`
+     - `NetSuite__SamlAudience` — typically `https://system.netsuite.com/sp/{AccountId}` (verify under NetSuite SAML SP setup)
+     - `NetSuite__SamlIssuer` — your IdP entityId (e.g. `https://auth.example.com/saml/netsuite`)
+     - `NetSuite__SamlSigningCertificatePath` — path to a PFX file holding the RSA-SHA256 signing key
+     - `NetSuite__SamlSigningCertificatePassword` — PFX password
+     - **Local dev**: run `bash scripts/generate-dev-saml-cert.sh` once to generate `src/EntryPoints/Auth.API/dev-certs/netsuite-saml.pfx` (gitignored). The compose file mounts that folder at `/app/dev-certs:ro`.
+     - **Production**: provision the cert via your secret store and upload the matching X.509 public certificate to NetSuite under `Setup → Integration → SAML Single Sign-on`.
 2. **Every endpoint** gets `.RequireAuthorization()` by default. If an endpoint must be public, call `.AllowAnonymous()` and explain why in the PR.
 3. **No raw SQL with string concatenation.** EF Core parameterises automatically; use `FromSqlInterpolated` if you need raw SQL.
 4. **Never return domain entities from endpoints.** Always project into a DTO / response record.
@@ -527,6 +536,11 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | Web.Blazor BFF returns 500 on first OIDC callback | OIDC handler refusing the discovery doc over HTTP | Make sure `RequireHttpsMetadata = false` in `BffAuthenticationExtensions` for Dev — Auth.API runs on plain HTTP locally; production must flip this back to `true` |
 | `session_id` claim missing on the principal | `OnTokenValidated` did not fire because another `Configure<OpenIdConnectOptions>` overrode the events delegate | The `services.AddOptions<OpenIdConnectOptions>(scheme).Configure<ITokenStore>(...)` call must run **before** any other configure-options call on the same scheme, otherwise the later `Configure` replaces `Events.OnTokenValidated` |
 | MudDataGrid loads infinitely on an admin page | Server pagination contract broken | The grid's `ServerData` callback must return a `GridData<T>` whose `TotalItems` matches the upstream `total`. Check `IAdminGatewayClient` actually returns `PagedResponse<T>.Total` — a `0` total leaves MudDataGrid spinning forever |
+| NetSuite SAML POST rejected (`InvalidIssuer` / `InvalidAudience`) | `NetSuite__SamlIssuer` / `NetSuite__SamlAudience` mismatch with the SP-side configuration in NetSuite | The IdP entityId you set in NetSuite's SAML SP setup must match `NetSuite__SamlIssuer` byte-for-byte; the `Audience` in the assertion must match what NetSuite expects (typically `https://system.netsuite.com/sp/{AccountId}`) |
+| NetSuite SAML POST rejected with `Signature validation failed` | The X.509 public cert uploaded to NetSuite does not match the signing PFX | Re-export the public cert from `netsuite-saml.pfx` (or use `netsuite-saml.crt` from the dev-cert script) and re-upload to NetSuite |
+| NetSuite SAML POST rejected with `NotOnOrAfter` / clock skew | Server clock drift > 5 min vs. NetSuite | Tighten NTP on the Auth.API host; the `subjectConfirmationLifetime` is intentionally short (5 min) per `NetSuiteSamlSigner` |
+| NetSuite returns "User not found" after a successful POST | The signed `NameID` (= `User.NetSuiteEmail`) does not match an active NetSuite user's email | Update the user's NetSuite email in the BFF admin UI (`/admin/users/{id}` → "Set NetSuite email") |
+| `NetSuite SAML is not configured` thrown at runtime | One of `NetSuite__AccountId / SamlAcsUrl / SamlAudience / SamlIssuer / SamlSigningCertificatePath` is empty | Configure all five — `NetSuiteSamlOptions.IsConfigured` checks the set as a whole |
 
 ---
 
