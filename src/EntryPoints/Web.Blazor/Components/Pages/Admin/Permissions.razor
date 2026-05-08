@@ -1,0 +1,45 @@
+@page "/admin/permissions"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+
+<PageTitle>Permissions</PageTitle>
+
+<PermissionView Permission="permissions.read">
+    <MudText Typo="Typo.h4" Class="mb-3">Permissions</MudText>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="_permissions" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>Code</MudTh>
+                <MudTh>Description</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Code</MudTd>
+                <MudTd>@context.Description</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</PermissionView>
+
+@code {
+    private IReadOnlyCollection<PermissionResponse> _permissions = Array.Empty<PermissionResponse>();
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _permissions = await Client.ListPermissionsAsync(CancellationToken.None); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+}

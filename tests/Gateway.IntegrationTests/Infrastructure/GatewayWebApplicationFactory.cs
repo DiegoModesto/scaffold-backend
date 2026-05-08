@@ -106,6 +106,7 @@ public sealed class GatewayWebApplicationFactory
                     // strings — YARP ignores routes whose ClusterId is empty/missing.
                     ["ReverseProxy:Routes:auth-discovery:ClusterId"] = "",
                     ["ReverseProxy:Routes:auth-connect:ClusterId"] = "",
+                    ["ReverseProxy:Routes:auth-admin:ClusterId"] = "",
                     ["ReverseProxy:Routes:web-api:ClusterId"] = "",
                     ["Logging:LogLevel:Default"] = "Warning",
                 }

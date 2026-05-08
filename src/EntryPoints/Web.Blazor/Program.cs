@@ -1,25 +1,56 @@
-using Application;
-using Infra;
-using Infra.Extensions;
 using Infra.Observability;
+using Microsoft.AspNetCore.Authentication;
+using MudBlazor.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Serilog;
+using StackExchange.Redis;
+using Web.Blazor.Authentication;
+using Web.Blazor.Authentication.TokenStore;
 using Web.Blazor.Components;
+using Web.Blazor.Gateway;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-builder.Configuration.MapEnvironmentVariables();
 
 builder.Host.UseSerilog((context, loggerConfig) =>
     loggerConfig.ReadFrom.Configuration(context.Configuration));
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services
+    .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.Blazor", includeAspNetCore: true);
+
+string redisConnection = builder.Configuration["Redis:ConnectionString"]
+    ?? throw new InvalidOperationException("Redis:ConnectionString must be configured.");
+
+IConnectionMultiplexer redisMultiplexer = await ConnectionMultiplexer.ConnectAsync(redisConnection);
+builder.Services.AddSingleton(redisMultiplexer);
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnection;
+    options.InstanceName = "bff:cache:";
+});
 
 builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration)
-    .AddInfrastructureMessaging(builder.Configuration)
-    .AddOpenTelemetryObservability(builder.Configuration, serviceName: "Web.Blazor", includeAspNetCore: true);
+    .AddDataProtection()
+    .PersistKeysToStackExchangeRedis(redisMultiplexer, "bff:dp-keys")
+    .SetApplicationName("Web.Blazor.BFF");
+
+builder.Services.AddSingleton<ITokenStore, RedisTokenStore>();
+
+builder.Services.AddBffAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddMudServices();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<IAdminGatewayClient, AdminGatewayClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Gateway:BaseUrl"]
+        ?? throw new InvalidOperationException("Gateway:BaseUrl is required."));
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 WebApplication app = builder.Build();
 
@@ -34,8 +65,28 @@ app.UseAntiforgery();
 
 app.UseSerilogRequestLogging();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/login", () => Results.Challenge(
+    new AuthenticationProperties { RedirectUri = "/" },
+    [BffAuthenticationExtensions.OidcScheme]));
+
+app.MapPost("/logout", async (HttpContext http) =>
+{
+    await http.SignOutAsync(BffAuthenticationExtensions.CookieScheme);
+    return Results.SignOut(
+        new AuthenticationProperties { RedirectUri = "/" },
+        [BffAuthenticationExtensions.OidcScheme]);
+}).RequireAuthorization();
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 await app.RunAsync();
+
+namespace Web.Blazor
+{
+    public partial class Program;
+}

@@ -29,4 +29,26 @@ public sealed class RoleTests
 
         role.PermissionIds.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void UpdateDetails_UpdatesNameAndDescription()
+    {
+        Role role = Role.Create(Guid.NewGuid(), "Old", "Old desc");
+
+        role.UpdateDetails("New", "New desc");
+
+        role.Name.ShouldBe("New");
+        role.Description.ShouldBe("New desc");
+    }
+
+    [Fact]
+    public void Delete_SetsIsDeleted()
+    {
+        Role role = Role.Create(Guid.NewGuid(), "Admin", "Admin");
+
+        role.Delete();
+
+        role.IsDeleted.ShouldBeTrue();
+        role.DeletedAt.ShouldNotBeNull();
+    }
 }

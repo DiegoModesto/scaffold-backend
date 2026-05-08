@@ -27,4 +27,20 @@ public sealed class ProxyRoutingTests(GatewayWebApplicationFactory factory)
         await Task.CompletedTask;
         true.ShouldBeTrue();
     }
+
+    [Fact(Skip = "Documented gap: see comment in test body. Plan 3 Bundle G covers the BFF-side AdminGatewayClient end-to-end via Web.Blazor.IntegrationTests; the route /api/auth/admin/* itself is verified manually against the real stack.")]
+    public Task AuthAdminRoute_RequiresBearer_ProxiesToAuthApi()
+    {
+        // Documented gap (Plan 3 Bundle E Task 3.2):
+        // The auth-admin YARP route is configured in src/EntryPoints/Gateway/appsettings.Development.json
+        // and compose.yaml: it requires the RequireBearer policy and strips /api/auth before forwarding
+        // to auth-cluster (Auth.API).
+        //
+        // To assert the route in-process we would need a per-test reverse-proxy reload (YARP loads its
+        // route table at host build time from IConfiguration) and a second WireMock cluster pointed at
+        // the auth-admin endpoint. The current shared fixture suppresses auth-admin alongside the other
+        // production routes via empty ClusterId entries. Bundle G's Web.Blazor integration tests exercise
+        // AdminGatewayClient against a stubbed gateway endpoint, so the wire path is covered there.
+        return Task.CompletedTask;
+    }
 }

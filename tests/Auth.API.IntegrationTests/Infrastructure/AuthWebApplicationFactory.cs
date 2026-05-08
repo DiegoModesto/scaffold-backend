@@ -11,12 +11,15 @@ using Auth.Domain.Users;
 using Auth.Application.Abstractions.Tenancy;
 using Auth.Infra.Database;
 using Auth.Infra.Database.Joins;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
@@ -140,6 +143,16 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
             {
                 opt.DisableTransportSecurityRequirement = true;
             });
+
+            // Register a test authentication scheme used by admin-endpoint integration tests
+            // to inject permission claims via headers without going through OpenIddict. The
+            // matching policy provider rebinds permission:* policies to this scheme.
+            services.AddAuthentication()
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthHandler.SchemeName, _ => { });
+
+            services.RemoveAll<IAuthorizationPolicyProvider>();
+            services.AddSingleton<IAuthorizationPolicyProvider, TestPermissionPolicyProvider>();
         });
     }
 
@@ -415,6 +428,25 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
             await manager.CreateAsync(descriptor);
         }
 
+        return client;
+    }
+
+    /// <summary>
+    /// Configures an <see cref="HttpClient"/> with the test authentication headers so
+    /// requests are accepted under the <c>TestScheme</c> and carry the supplied permission
+    /// codes. Used by admin-endpoint integration tests.
+    /// </summary>
+    public HttpClient CreateAuthorizedClient(Guid tenantId, params string[] permissions)
+    {
+        HttpClient client = CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.TenantHeader, tenantId.ToString());
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, Guid.NewGuid().ToString());
+        // Always send the header (even when permissions is empty) so the request is
+        // authenticated; an empty header means "valid identity, zero permission claims",
+        // which is the canonical setup for 403 tests. We use a sentinel "_" value that
+        // the TestAuthHandler ignores so HttpClient doesn't strip the empty header.
+        string headerValue = permissions.Length == 0 ? "_" : string.Join(',', permissions);
+        client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, headerValue);
         return client;
     }
 

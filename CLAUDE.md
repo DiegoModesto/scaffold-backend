@@ -86,10 +86,15 @@ src/
     │   ├── Dockerfile
     │   ├── appsettings.json         # ⚠️ empty secrets — env vars supply them
     │   └── appsettings.Development.json
-    ├── Web.Blazor/                  # Blazor Server (interactive server components) — same Infra/Application stack as Web.API
-    │   ├── Components/              # Razor components (App, Routes, Layout, Pages)
+    ├── Web.Blazor/                  # BFF (Blazor Server interactive) — cookie session, OIDC client of Auth.API,
+    │   │                            # token store in Redis, calls Auth.API admin endpoints via the Gateway.
+    │   │                            # No DbContext / EF Core / RabbitMQ dependency — Infra is referenced only
+    │   │                            # for OpenTelemetry observability.
+    │   ├── Authentication/          # BffAuthenticationExtensions (cookie + OIDC), TokenStore (RedisTokenStore)
+    │   ├── Gateway/                 # IAdminGatewayClient (typed HttpClient hitting /api/auth/admin/*)
+    │   ├── Components/              # Razor components: layout, PermissionView, admin pages (MudBlazor)
     │   ├── wwwroot/                 # Static assets
-    │   ├── Program.cs               # Composition root (uses AddInfrastructure + AddOpenTelemetryObservability)
+    │   ├── Program.cs               # Composition root: Redis + DataProtection + cookie+OIDC + IAdminGatewayClient
     │   ├── Dockerfile
     │   ├── appsettings.json
     │   └── appsettings.Development.json
@@ -388,6 +393,12 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
      - `Redis__ConnectionString` — Redis used by `IntrospectionCachingHandler`
      - `IntrospectionCache__TtlSeconds` (defaults to `30`) — TTL for cached introspection responses
      - `ReverseProxy__*` — YARP routes/clusters (see `compose.yaml` for the full env-var-driven config)
+   - **Web.Blazor (BFF)** — does NOT need `JWT_SECRET`, `DB_CONNECTION_STRING`, or any RabbitMQ vars. It is an OIDC client only, so it only needs:
+     - `Auth__Authority` — Auth.API base URL (e.g. `http://auth.api:8080`)
+     - `Auth__ClientId` — must be `bff-blazor` (matches the seeded OpenIddict client)
+     - `Auth__ClientSecret` (`OPENIDDICT_BFF_SECRET`) — client secret for code+PKCE+secret
+     - `Redis__ConnectionString` — backs the server-side token store, the DataProtection key ring, and the distributed cache
+     - `Gateway__BaseUrl` — used by `IAdminGatewayClient` to reach Auth.API admin endpoints (e.g. `http://gateway:8080`)
 2. **Every endpoint** gets `.RequireAuthorization()` by default. If an endpoint must be public, call `.AllowAnonymous()` and explain why in the PR.
 3. **No raw SQL with string concatenation.** EF Core parameterises automatically; use `FromSqlInterpolated` if you need raw SQL.
 4. **Never return domain entities from endpoints.** Always project into a DTO / response record.
@@ -513,6 +524,9 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | Gateway returns 401 for valid token | Introspection client not seeded or wrong secret | Check `Auth:IntrospectionClientId/Secret` match a seeded resource server with `Endpoints.Introspection` permission |
 | Token revoked but Gateway still admits requests | Introspection cache hit (default TTL 30s) | Reduce `IntrospectionCache:TtlSeconds`, or call `/connect/revocation` and wait up to TTL |
 | Downstream service can't read identity | Forward headers missing | Look for `X-Forwarded-User` / `X-Forwarded-TenantId` headers (set by `ForwardedIdentityTransform`; Plan 5 reads them in Web.API) |
+| Web.Blazor BFF returns 500 on first OIDC callback | OIDC handler refusing the discovery doc over HTTP | Make sure `RequireHttpsMetadata = false` in `BffAuthenticationExtensions` for Dev — Auth.API runs on plain HTTP locally; production must flip this back to `true` |
+| `session_id` claim missing on the principal | `OnTokenValidated` did not fire because another `Configure<OpenIdConnectOptions>` overrode the events delegate | The `services.AddOptions<OpenIdConnectOptions>(scheme).Configure<ITokenStore>(...)` call must run **before** any other configure-options call on the same scheme, otherwise the later `Configure` replaces `Events.OnTokenValidated` |
+| MudDataGrid loads infinitely on an admin page | Server pagination contract broken | The grid's `ServerData` callback must return a `GridData<T>` whose `TotalItems` matches the upstream `total`. Check `IAdminGatewayClient` actually returns `PagedResponse<T>.Total` — a `0` total leaves MudDataGrid spinning forever |
 
 ---
 

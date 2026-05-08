@@ -1,0 +1,83 @@
+@inject IAdminGatewayClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudSelect T="Guid?" @bind-Value="_selectedRoleId" Label="Role" Required="true">
+                @foreach (RoleSummary role in _roles)
+                {
+                    <MudSelectItem T="Guid?" Value="@role.Id">@role.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy || _selectedRoleId is null">Assign</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid TargetId { get; set; }
+    [Parameter] public string TargetKind { get; set; } = "user"; // "user" or "group"
+
+    private IReadOnlyCollection<RoleSummary> _roles = Array.Empty<RoleSummary>();
+    private Guid? _selectedRoleId;
+    private bool _busy;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            PagedResponse<RoleSummary> page = await Client.ListRolesAsync(1, 200, null, CancellationToken.None);
+            _roles = page.Items;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_selectedRoleId is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (TargetKind == "group")
+                await Client.AssignRoleToGroupAsync(TargetId, _selectedRoleId.Value, CancellationToken.None);
+            else
+                await Client.AssignRoleToUserAsync(TargetId, _selectedRoleId.Value, CancellationToken.None);
+            Snackbar.Add("Role assigned.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

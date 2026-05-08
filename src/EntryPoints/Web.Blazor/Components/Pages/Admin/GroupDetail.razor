@@ -1,0 +1,187 @@
+@page "/admin/groups/{Id:guid}"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Group detail</PageTitle>
+
+<PermissionView Permission="groups.read">
+    <MudButton Href="/admin/groups" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-3">Back to groups</MudButton>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_group is null)
+    {
+        <MudAlert Severity="Severity.Warning">Group not found.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h5">@_group.Name</MudText></CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField @bind-Value="_editName" Label="Name" Disabled="@(!_editing)" />
+                        <MudTextField @bind-Value="_editDescription" Label="Description" Lines="3" Disabled="@(!_editing)" />
+                        <MudTextField @bind-Value="_editEntraGroupIdText" Label="Entra Group Id (GUID)" Disabled="@(!_editing)" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <PermissionView Permission="groups.write">
+                            @if (!_editing)
+                            {
+                                <MudButton OnClick="@(() => _editing = true)" Variant="Variant.Outlined">Edit</MudButton>
+                                <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="DeleteAsync">Delete</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">Save</MudButton>
+                                <MudButton OnClick="CancelEdit">Cancel</MudButton>
+                            }
+                        </PermissionView>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Roles</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="groups.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAssignRole">Assign</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_group.AssignedRoles.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">No roles assigned.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="RoleRef" Dense="true">
+                                @foreach (RoleRef r in _group.AssignedRoles)
+                                {
+                                    <MudListItem T="RoleRef" Value="r">
+                                        @r.Name
+                                        <PermissionView Permission="groups.write">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                           OnClick="@(() => RevokeRoleAsync(r.Id))" />
+                                        </PermissionView>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private GroupDetailResponse? _group;
+    private bool _loading = true;
+    private bool _editing;
+    private string? _error;
+
+    private string _editName = "";
+    private string _editDescription = "";
+    private string? _editEntraGroupIdText;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _group = await Client.GetGroupAsync(Id, CancellationToken.None);
+            if (_group is not null)
+            {
+                _editName = _group.Name;
+                _editDescription = _group.Description;
+                _editEntraGroupIdText = _group.EntraGroupId?.ToString();
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private void CancelEdit()
+    {
+        _editing = false;
+        if (_group is not null)
+        {
+            _editName = _group.Name;
+            _editDescription = _group.Description;
+            _editEntraGroupIdText = _group.EntraGroupId?.ToString();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        Guid? entraId = null;
+        if (!string.IsNullOrWhiteSpace(_editEntraGroupIdText))
+        {
+            if (!Guid.TryParse(_editEntraGroupIdText, out Guid parsed))
+            {
+                Snackbar.Add("Entra Group Id must be a valid GUID.", Severity.Error);
+                return;
+            }
+            entraId = parsed;
+        }
+        try
+        {
+            await Client.UpdateGroupAsync(Id, _editName, _editDescription, entraId, CancellationToken.None);
+            Snackbar.Add("Group updated.", Severity.Success);
+            _editing = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Delete group",
+            "Are you sure? This action cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true) return;
+        try
+        {
+            await Client.DeleteGroupAsync(Id, CancellationToken.None);
+            Snackbar.Add("Group deleted.", Severity.Success);
+            Nav.NavigateTo("/admin/groups");
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task OpenAssignRole()
+    {
+        var parameters = new DialogParameters { ["TargetId"] = Id, ["TargetKind"] = "group" };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AssignRoleDialog>("Assign role", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+
+    private async Task RevokeRoleAsync(Guid roleId)
+    {
+        try { await Client.RevokeRoleFromGroupAsync(Id, roleId, CancellationToken.None); Snackbar.Add("Role revoked.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

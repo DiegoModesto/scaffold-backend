@@ -1,0 +1,79 @@
+@page "/admin/m2m-clients"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+
+<PageTitle>M2M Clients</PageTitle>
+
+<PermissionView Permission="m2m.read">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">M2M Clients</MudText>
+        <MudSpacer />
+        <PermissionView Permission="m2m.write">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreate">
+                New client
+            </MudButton>
+        </PermissionView>
+    </MudStack>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    <MudDataGrid T="M2MClientSummary" ServerData="@LoadClients" @ref="_grid" RowsPerPage="20">
+        <Columns>
+            <PropertyColumn Property="x => x.ClientId" Title="Client Id" />
+            <PropertyColumn Property="x => x.DisplayName" Title="Display name" />
+            <TemplateColumn Title="Active">
+                <CellTemplate>@(context.Item.IsActive ? "Yes" : "No")</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="">
+                <CellTemplate>
+                    <MudButton Href="@($"/admin/m2m-clients/{context.Item.Id}")" Variant="Variant.Outlined" Size="Size.Small">View</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="M2MClientSummary" />
+        </PagerContent>
+    </MudDataGrid>
+</PermissionView>
+
+@code {
+    private MudDataGrid<M2MClientSummary>? _grid;
+    private string? _error;
+
+    private async Task<GridData<M2MClientSummary>> LoadClients(GridState<M2MClientSummary> state)
+    {
+        try
+        {
+            _error = null;
+            PagedResponse<M2MClientSummary> page = await Client.ListM2MClientsAsync(state.Page + 1, state.PageSize, CancellationToken.None);
+            return new GridData<M2MClientSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return new GridData<M2MClientSummary> { Items = Array.Empty<M2MClientSummary>(), TotalItems = 0 };
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateM2MClientDialog>("New M2M client");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled && r.Data is CreateM2MClientResponse created)
+        {
+            var parameters = new DialogParameters { ["Secret"] = created.ClientSecret };
+            await DialogService.ShowAsync<Dialogs.ShowSecretDialog>("Client secret", parameters,
+                new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false });
+            await ReloadAsync();
+        }
+    }
+}

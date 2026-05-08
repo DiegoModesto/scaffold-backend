@@ -1,0 +1,75 @@
+@page "/admin/roles"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+
+<PageTitle>Roles</PageTitle>
+
+<PermissionView Permission="roles.read">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Roles</MudText>
+        <MudSpacer />
+        <PermissionView Permission="roles.write">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreate">
+                New role
+            </MudButton>
+        </PermissionView>
+    </MudStack>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    <MudTextField @bind-Value="_search" Placeholder="Search by name" Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                  DebounceInterval="300" OnDebounceIntervalElapsed="@(async () => await ReloadAsync())" Class="mb-3" />
+
+    <MudDataGrid T="RoleSummary" ServerData="@LoadRoles" @ref="_grid" RowsPerPage="20">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="">
+                <CellTemplate>
+                    <MudButton Href="@($"/admin/roles/{context.Item.Id}")" Variant="Variant.Outlined" Size="Size.Small">View</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="RoleSummary" />
+        </PagerContent>
+    </MudDataGrid>
+</PermissionView>
+
+@code {
+    private MudDataGrid<RoleSummary>? _grid;
+    private string? _search;
+    private string? _error;
+
+    private async Task<GridData<RoleSummary>> LoadRoles(GridState<RoleSummary> state)
+    {
+        try
+        {
+            _error = null;
+            PagedResponse<RoleSummary> page = await Client.ListRolesAsync(state.Page + 1, state.PageSize, _search, CancellationToken.None);
+            return new GridData<RoleSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return new GridData<RoleSummary> { Items = Array.Empty<RoleSummary>(), TotalItems = 0 };
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateRoleDialog>("New role");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+}

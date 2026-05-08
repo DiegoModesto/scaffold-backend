@@ -1,0 +1,63 @@
+@inject IAdminGatewayClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudSelect T="Guid?" @bind-Value="_selectedPermissionId" Label="Permission" Required="true">
+                @foreach (PermissionResponse p in _permissions)
+                {
+                    <MudSelectItem T="Guid?" Value="@p.Id">@p.Code — @p.Description</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy || _selectedPermissionId is null">Assign</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid RoleId { get; set; }
+
+    private IReadOnlyCollection<PermissionResponse> _permissions = Array.Empty<PermissionResponse>();
+    private Guid? _selectedPermissionId;
+    private bool _busy;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _permissions = await Client.ListPermissionsAsync(CancellationToken.None); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task Submit()
+    {
+        if (_selectedPermissionId is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Client.AssignPermissionToRoleAsync(RoleId, _selectedPermissionId.Value, CancellationToken.None);
+            Snackbar.Add("Permission assigned.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,208 @@
+@page "/admin/users/{Id:guid}"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>User detail</PageTitle>
+
+<PermissionView Permission="users.read">
+    <MudButton Href="/admin/users" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-3">Back to users</MudButton>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_user is null)
+    {
+        <MudAlert Severity="Severity.Warning">User not found.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h5">@_user.DisplayName</MudText>
+                            <MudText Typo="Typo.body2">@_user.Email</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText><b>Status:</b> @(_user.IsActive ? "Active" : "Disabled")</MudText>
+                        <MudText><b>Pre-provisioned:</b> @(_user.IsPreProvisioned ? "Yes" : "No")</MudText>
+                        <MudText><b>NetSuite email:</b> @(_user.NetSuiteEmail ?? "(not set)")</MudText>
+                        <MudText><b>Last login:</b> @(_user.LastLoginAt?.ToString("u") ?? "Never")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <PermissionView Permission="users.write">
+                            @if (_user.IsActive)
+                            {
+                                <MudButton Color="Color.Warning" Variant="Variant.Outlined" OnClick="DisableAsync">Disable</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Color="Color.Success" Variant="Variant.Outlined" OnClick="EnableAsync">Enable</MudButton>
+                            }
+                            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="OpenSetNetSuite">Set NetSuite email</MudButton>
+                        </PermissionView>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Roles</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="users.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAssignRole">Assign</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_user.AssignedRoles.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">No roles assigned.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="RoleRef" Dense="true">
+                                @foreach (RoleRef r in _user.AssignedRoles)
+                                {
+                                    <MudListItem T="RoleRef" Value="r">
+                                        @r.Name
+                                        <PermissionView Permission="users.write">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                           OnClick="@(() => RevokeRoleAsync(r.Id))" />
+                                        </PermissionView>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent><MudText Typo="Typo.h6">Groups</MudText></CardHeaderContent>
+                        <CardHeaderActions>
+                            <PermissionView Permission="users.write">
+                                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddToGroup">Add</MudButton>
+                            </PermissionView>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_user.AssignedGroups.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">No groups assigned.</MudText>
+                        }
+                        else
+                        {
+                            <MudList T="GroupRef" Dense="true">
+                                @foreach (GroupRef g in _user.AssignedGroups)
+                                {
+                                    <MudListItem T="GroupRef" Value="g">
+                                        @g.Name
+                                        <PermissionView Permission="users.write">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                           OnClick="@(() => RemoveFromGroupAsync(g.Id))" />
+                                        </PermissionView>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</PermissionView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private UserDetailResponse? _user;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _user = await Client.GetUserAsync(Id, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DisableAsync()
+    {
+        try { await Client.DisableUserAsync(Id, CancellationToken.None); Snackbar.Add("User disabled.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task EnableAsync()
+    {
+        try { await Client.EnableUserAsync(Id, CancellationToken.None); Snackbar.Add("User enabled.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task OpenSetNetSuite()
+    {
+        var parameters = new DialogParameters
+        {
+            ["UserId"] = Id,
+            ["CurrentNetSuiteEmail"] = _user?.NetSuiteEmail
+        };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.SetNetSuiteEmailDialog>("Set NetSuite email", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+
+    private async Task OpenAssignRole()
+    {
+        var parameters = new DialogParameters { ["TargetId"] = Id, ["TargetKind"] = "user" };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AssignRoleDialog>("Assign role", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+
+    private async Task OpenAddToGroup()
+    {
+        var parameters = new DialogParameters { ["UserId"] = Id };
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.AddUserToGroupDialog>("Add to group", parameters);
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+
+    private async Task RevokeRoleAsync(Guid roleId)
+    {
+        try { await Client.RevokeRoleFromUserAsync(Id, roleId, CancellationToken.None); Snackbar.Add("Role revoked.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task RemoveFromGroupAsync(Guid groupId)
+    {
+        try { await Client.RemoveUserFromGroupAsync(Id, groupId, CancellationToken.None); Snackbar.Add("Removed from group.", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

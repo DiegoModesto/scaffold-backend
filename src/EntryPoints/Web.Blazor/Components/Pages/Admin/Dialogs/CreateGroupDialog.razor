@@ -1,0 +1,61 @@
+@inject IAdminGatewayClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Name" Required="true" />
+        <MudTextField @bind-Value="_description" Label="Description" Lines="3" />
+        <MudTextField @bind-Value="_entraGroupIdText" Label="Entra Group Id (optional GUID)" />
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_busy">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _name = "";
+    private string _description = "";
+    private string? _entraGroupIdText;
+    private bool _busy;
+    private string? _error;
+
+    private async Task Submit()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            Guid? entraId = null;
+            if (!string.IsNullOrWhiteSpace(_entraGroupIdText))
+            {
+                if (!Guid.TryParse(_entraGroupIdText, out Guid parsed))
+                {
+                    _error = "Entra Group Id must be a valid GUID.";
+                    _busy = false;
+                    return;
+                }
+                entraId = parsed;
+            }
+            Guid id = await Client.CreateGroupAsync(_name, _description, entraId, CancellationToken.None);
+            Snackbar.Add("Group created.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(id));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,32 @@
+@using System.Security.Claims
+
+<AuthorizeView>
+    <Authorized>
+        <MudText Class="mr-3">@(GetDisplayName(context.User))</MudText>
+        <form action="/logout" method="post" style="display:inline;">
+            <AntiforgeryToken />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Color="Color.Inherit"
+                       StartIcon="@Icons.Material.Filled.Logout">
+                Logout
+            </MudButton>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Filled.Login">
+            Login
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private static string GetDisplayName(ClaimsPrincipal user)
+    {
+        return user.FindFirst("name")?.Value
+            ?? user.FindFirst(ClaimTypes.Name)?.Value
+            ?? user.FindFirst("preferred_username")?.Value
+            ?? user.FindFirst(ClaimTypes.Email)?.Value
+            ?? user.Identity?.Name
+            ?? "User";
+    }
+}

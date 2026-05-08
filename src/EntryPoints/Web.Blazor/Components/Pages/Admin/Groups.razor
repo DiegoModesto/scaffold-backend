@@ -1,0 +1,79 @@
+@page "/admin/groups"
+@attribute [Authorize]
+@inject IAdminGatewayClient Client
+@inject IDialogService DialogService
+
+<PageTitle>Groups</PageTitle>
+
+<PermissionView Permission="groups.read">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Groups</MudText>
+        <MudSpacer />
+        <PermissionView Permission="groups.write">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreate">
+                New group
+            </MudButton>
+        </PermissionView>
+    </MudStack>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    }
+
+    <MudTextField @bind-Value="_search" Placeholder="Search by name" Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                  DebounceInterval="300" OnDebounceIntervalElapsed="@(async () => await ReloadAsync())" Class="mb-3" />
+
+    <MudDataGrid T="GroupSummary" ServerData="@LoadGroups" @ref="_grid" RowsPerPage="20">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="Entra link">
+                <CellTemplate>@(context.Item.HasEntraLink ? "Yes" : "No")</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="">
+                <CellTemplate>
+                    <MudButton Href="@($"/admin/groups/{context.Item.Id}")" Variant="Variant.Outlined" Size="Size.Small">View</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="GroupSummary" />
+        </PagerContent>
+    </MudDataGrid>
+</PermissionView>
+
+@code {
+    private MudDataGrid<GroupSummary>? _grid;
+    private string? _search;
+    private string? _error;
+
+    private async Task<GridData<GroupSummary>> LoadGroups(GridState<GroupSummary> state)
+    {
+        try
+        {
+            _error = null;
+            PagedResponse<GroupSummary> page = await Client.ListGroupsAsync(state.Page + 1, state.PageSize, _search, CancellationToken.None);
+            return new GridData<GroupSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return new GridData<GroupSummary> { Items = Array.Empty<GroupSummary>(), TotalItems = 0 };
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    private async Task OpenCreate()
+    {
+        IDialogReference dlg = await DialogService.ShowAsync<Dialogs.CreateGroupDialog>("New group");
+        DialogResult? r = await dlg.Result;
+        if (r is not null && !r.Canceled) await ReloadAsync();
+    }
+}
