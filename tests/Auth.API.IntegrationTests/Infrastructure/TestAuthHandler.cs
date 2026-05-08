@@ -85,7 +85,7 @@ internal sealed class TestPermissionPolicyProvider(IOptions<AuthorizationOptions
             return Task.FromResult<AuthorizationPolicy?>(samlPolicy);
         }
 
-        const string prefix = Auth.API.Authorization.PermissionPolicyProvider.PolicyPrefix;
+        const string prefix = global::Infra.Authorization.PermissionPolicyProvider.PolicyPrefix;
         if (!policyName.StartsWith(prefix, StringComparison.Ordinal))
         {
             return base.GetPolicyAsync(policyName);
@@ -95,7 +95,7 @@ internal sealed class TestPermissionPolicyProvider(IOptions<AuthorizationOptions
         var policy = new AuthorizationPolicyBuilder()
             .AddAuthenticationSchemes(TestAuthHandler.SchemeName)
             .RequireAuthenticatedUser()
-            .AddRequirements(new Auth.API.Authorization.PermissionRequirement(permission))
+            .AddRequirements(new global::Infra.Authorization.PermissionRequirement(permission))
             .Build();
         return Task.FromResult<AuthorizationPolicy?>(policy);
     }

@@ -42,8 +42,8 @@ internal static class DependencyInjection
                 Endpoints.Saml.SamlAuthorizationPolicies.NetSuiteInitiate,
                 Endpoints.Saml.SamlAuthorizationPolicies.NetSuiteInitiatePolicy);
         });
-        services.AddSingleton<IAuthorizationPolicyProvider, Authorization.PermissionPolicyProvider>();
-        services.AddSingleton<IAuthorizationHandler, Authorization.PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationPolicyProvider, global::Infra.Authorization.PermissionPolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler, global::Infra.Authorization.PermissionAuthorizationHandler>();
 
         services.AddHealthChecks()
             .AddNpgSql(

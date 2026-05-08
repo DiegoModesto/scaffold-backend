@@ -9,6 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="OpenIddict.Validation.AspNetCore" />
+    <PackageReference Include="OpenIddict.Validation.SystemNetHttp" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
@@ -25,6 +28,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Application\Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Application.UnitTests" />
+    <InternalsVisibleTo Include="Web.API.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

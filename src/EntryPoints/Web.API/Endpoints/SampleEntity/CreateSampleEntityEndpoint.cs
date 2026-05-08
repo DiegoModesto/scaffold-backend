@@ -26,6 +26,6 @@ internal sealed class CreateSampleEntityEndpoint : IEndpoint
             })
             .WithTags(Tags.SampleEntity)
             .WithName("CreateSampleEntity")
-            .RequireAuthorization();
+            .RequireAuthorization($"{Infra.Authorization.PermissionPolicyProvider.PolicyPrefix}sample.write");
     }
 }

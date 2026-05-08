@@ -72,10 +72,12 @@ The base `appsettings.json` ships with empty secrets on purpose. Provide them vi
 | Variable                       | Description                                     | Required        |
 |--------------------------------|-------------------------------------------------|-----------------|
 | `DB_CONNECTION_STRING`         | Postgres connection string                      | ✅              |
-| `JWT_SECRET`                   | Signing key ≥ 32 bytes (256 bits)               | ✅              |
-| `JWT_ISSUER`                   | JWT `iss` claim                                 | optional        |
-| `JWT_AUDIENCE`                 | JWT `aud` claim                                 | optional        |
-| `JWT_EXPIRATION_MINUTES`       | Access token TTL                                | optional        |
+| `Auth__Authority`              | Auth.API base URL (e.g. `http://auth.api:8080`) | ✅              |
+| `Auth__IntrospectionEndpoint`  | Full URL of `/connect/introspect`               | ✅              |
+| `Auth__IntrospectionClientId`  | OpenIddict resource server id (default `web-api`) | ✅            |
+| `Auth__IntrospectionClientSecret` (`OPENIDDICT_WEB_API_SECRET`) | Secret for the `web-api` resource server | ✅ |
+| `Redis__ConnectionString`      | Optional — enables introspection cache          | optional        |
+| `IntrospectionCache__TtlSeconds` | Introspection cache TTL (default 30s)         | optional        |
 | `RABBITMQ_HOST`                | RabbitMQ host                                   | Worker / publishers |
 | `RABBITMQ_USER`                | RabbitMQ user                                   | Worker / publishers |
 | `RABBITMQ_PASSWORD`            | RabbitMQ password                               | Worker / publishers |
@@ -129,7 +131,7 @@ dotnet test tests/Application.UnitTests/Application.UnitTests.csproj      # unit
 dotnet test tests/Web.API.IntegrationTests/...                            # integration + architecture
 ```
 
-Integration tests use `WebApplicationFactory<Program>` with an in-memory EF provider and a signed test JWT — no external services required.
+Integration tests use `WebApplicationFactory<Program>` with an in-memory EF provider and a WireMock server impersonating Auth.API's introspection endpoint — no external services required. Use `factory.IssueTestToken(tenantId, subjectId, "sample.read", "sample.write")` to mint opaque tokens whose introspection responses carry the requested permissions.
 
 ### Observability — OpenTelemetry
 
@@ -152,8 +154,10 @@ Point a collector at `http://localhost:4317` (Jaeger, .NET Aspire dashboard, OTe
 
 ### Security highlights
 
-- JWT secret is validated at startup (≥ 256 bits, fails fast)
-- `RequireAuthorization()` on every Web.API endpoint by default
+- Web.API validates **opaque reference tokens** by introspecting against Auth.API (`OpenIddict.Validation.AspNetCore` + `SystemNetHttp`). No JWT signing key lives in Web.API anymore.
+- Optional Redis-backed introspection cache (`Infra.Authentication.IntrospectionCachingHandler`) shared with the Gateway; TTL defaults to 30s — short enough to honour token revocation.
+- `IUserContext.TenantId` is resolved from the `tenant_id` claim, falling back to the `X-Forwarded-TenantId` header set by the Gateway. Production deployments must lock down inbound traffic so only the Gateway can set the header.
+- Endpoints declare permission policies (`RequireAuthorization("permission:sample.read")`) — the dynamic `PermissionPolicyProvider` lives in `Infra.Authorization` and is shared with Auth.API.
 - Security headers middleware: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`
 - HSTS + HTTPS redirection outside Development
 - Configurable CORS (`Cors:AllowedOrigins`)

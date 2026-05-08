@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
-namespace Auth.API.Authorization;
+namespace Infra.Authorization;
 
-internal sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
+public sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
     : DefaultAuthorizationPolicyProvider(options)
 {
     public const string PolicyPrefix = "permission:";
@@ -15,7 +15,7 @@ internal sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> op
             return await base.GetPolicyAsync(policyName);
         }
 
-        var permission = policyName[PolicyPrefix.Length..];
+        string permission = policyName[PolicyPrefix.Length..];
         return new AuthorizationPolicyBuilder()
             .AddAuthenticationSchemes(
                 OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)

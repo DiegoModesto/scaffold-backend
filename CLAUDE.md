@@ -364,8 +364,8 @@ services.TryDecorate(typeof(ICommandHandler<>),  typeof(ValidationDecorator.Comm
 ### Integration tests (`Web.API.IntegrationTests`)
 
 - Use `IClassFixture<CustomWebApplicationFactory>` — fixture is shared per class.
-- Factory replaces real `DbContext` with EF InMemory and sets env vars (`JWT_SECRET`, `DB_CONNECTION_STRING`) in its constructor **before** `Program.Main` runs.
-- Factory exposes `CreateBearerToken(userId)` — use it for authenticated requests.
+- Factory replaces real `DbContext` with EF InMemory, sets env vars (`DB_CONNECTION_STRING`, `Auth__*`) in its constructor **before** `Program.Main` runs, and starts a WireMock server impersonating Auth.API's `/connect/introspect`.
+- Factory exposes `IssueTestToken(tenantId, subjectId, params permissions)` — returns an opaque token whose introspection response carries the requested claims (sub, tenant_id, permission). Pass that token via `Authorization: Bearer <token>` to test authenticated requests.
 - When adding new EF-related tests, note the factory strips all `Microsoft.EntityFrameworkCore.*` descriptors to avoid the "multiple providers" error.
 - **Always** test: 401 without token, happy path, the main validation failure path, the not-found path.
 
@@ -377,10 +377,15 @@ Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention 
 
 ## 9. Security — hard rules
 
-1. **Never** commit secrets. `appsettings.json` has empty strings for `Jwt:Secret` and connection strings by design. Real values come from env vars:
-   - `JWT_SECRET` (must be ≥ 32 bytes UTF-8 — `Infra.DependencyInjection` fails at startup otherwise)
-   - `DB_CONNECTION_STRING`
-   - `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`
+1. **Never** commit secrets. `appsettings.json` has empty strings for the `Auth` section and connection strings by design. Real values come from env vars:
+   - **Web.API** (downstream of Gateway, validates opaque tokens via Auth.API introspection):
+     - `Auth__Authority` — Auth.API base URL (e.g. `http://auth.api:8080`)
+     - `Auth__IntrospectionEndpoint` — full URL of `/connect/introspect`
+     - `Auth__IntrospectionClientId` (`web-api`) and `Auth__IntrospectionClientSecret` (`OPENIDDICT_WEB_API_SECRET`) — must match the seeded OpenIddict resource server with the `Endpoints.Introspection` permission
+     - `Redis__ConnectionString` — when set, enables the shared `Infra.Authentication.IntrospectionCachingHandler` (token responses cached by SHA-256 hash with `IntrospectionCache:TtlSeconds` TTL, default 30s). Trust horizon: cache window means token revocation propagates within TTL — keep TTL ≤ 60s.
+     - `DB_CONNECTION_STRING`
+     - `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`
+   - **`X-Forwarded-TenantId`** — set by the Gateway's `ForwardedIdentityTransform`. Web.API's `IUserContext.TenantId` reads the `tenant_id` claim first and falls back to this header. **Production must lock down inbound traffic so only the Gateway can set this header** (mTLS, network policy, or IP allowlist) — otherwise an external client can spoof tenant identity by sending the header directly.
    - **Auth.API**:
      - `AUTH_DB_CONNECTION_STRING` (or `ConnectionStrings__AuthDb`) — dedicated Postgres for the auth bounded context
      - `Redis__ConnectionString` (or `REDIS_CONNECTION_STRING`)
@@ -522,7 +527,9 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | Endpoint skips validation entirely | Injected concrete handler class | Inject `ICommandHandler<,>` interface instead |
 | `Scrutor.DecorationException: Could not find any registered services` | Used `Decorate` where no services match | Use `TryDecorate` |
 | Integration test throws "Multiple database providers registered" | `AddDbContext` called twice without cleanup | Strip all `Microsoft.EntityFrameworkCore.*` descriptors in factory (already done in `CustomWebApplicationFactory`) |
-| `Jwt:Secret must be configured` on startup | Env var missing or < 32 bytes | Set `JWT_SECRET` |
+| `Auth:Authority is required` on startup | `Auth__*` env vars missing | Set `Auth__Authority`, `Auth__IntrospectionEndpoint`, `Auth__IntrospectionClientId`, `Auth__IntrospectionClientSecret` (see §9). |
+| Web.API returns 401 for every request | Introspection responses say `active=false` | Verify the seeded `web-api` client secret in Auth.API matches `OPENIDDICT_WEB_API_SECRET`, and that Auth.API and Web.API share the same issuer URL. |
+| Web.API returns 403 instead of 200 with a valid token | Token is missing the required `permission` claim | Issue the token with the right permission (`sample.read`, `sample.write`, etc.); permissions live in `PermissionCodes.All`. |
 | Moq `Can not create proxy for type ... not accessible` | Private/nested test types | Make them `public` or skip Moq (use a hand-rolled stub) |
 | Handler is not registered | Returning `internal sealed class` handler | Make it `public sealed class` (Scrutor scans, but DI resolves via the interface) |
 | `CS1061: 'Result<T>' does not contain 'Match'` | Missing `using Web.API.Extensions;` | Add the import |

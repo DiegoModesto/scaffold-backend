@@ -1,4 +1,4 @@
-using Auth.API.Authorization;
+using Infra.Authorization;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;

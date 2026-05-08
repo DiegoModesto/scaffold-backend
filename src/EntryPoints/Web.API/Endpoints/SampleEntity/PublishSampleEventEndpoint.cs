@@ -26,6 +26,6 @@ internal sealed class PublishSampleEventEndpoint : IEndpoint
             })
             .WithTags(Tags.SampleEntity)
             .WithName("PublishSampleEvent")
-            .RequireAuthorization();
+            .RequireAuthorization($"{Infra.Authorization.PermissionPolicyProvider.PolicyPrefix}sample.write");
     }
 }

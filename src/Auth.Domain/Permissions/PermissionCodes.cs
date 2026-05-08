@@ -11,6 +11,8 @@ public static class PermissionCodes
     public const string M2MClientsRead = "m2mclients.read";
     public const string M2MClientsWrite = "m2mclients.write";
     public const string AuditRead = "audit.read";
+    public const string SampleRead = "sample.read";
+    public const string SampleWrite = "sample.write";
 
     public static IReadOnlyCollection<(string Code, string Description)> All { get; } =
     [
@@ -23,5 +25,7 @@ public static class PermissionCodes
         (M2MClientsRead, "Read machine-to-machine clients"),
         (M2MClientsWrite, "Create and modify machine-to-machine clients"),
         (AuditRead, "Read audit events"),
+        (SampleRead, "Read sample entities"),
+        (SampleWrite, "Create and modify sample entities"),
     ];
 }

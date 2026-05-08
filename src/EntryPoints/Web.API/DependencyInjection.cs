@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Web.API.Extensions;
 
 namespace Web.API;
@@ -25,6 +26,9 @@ public static class DependencyInjection
             });
 
         services.AddEndpoints(typeof(DependencyInjection).Assembly);
+
+        services.AddSingleton<IAuthorizationPolicyProvider, Infra.Authorization.PermissionPolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler, Infra.Authorization.PermissionAuthorizationHandler>();
 
         services.AddControllers();
 

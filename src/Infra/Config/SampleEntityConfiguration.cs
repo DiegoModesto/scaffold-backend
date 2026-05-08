@@ -14,6 +14,9 @@ internal sealed class SampleEntityConfiguration : AbstractConfiguration<SampleEn
 
         builder.HasKey(e => e.Id);
 
+        builder.Property(e => e.TenantId).IsRequired();
+        builder.HasIndex(e => new { e.TenantId, e.Id });
+
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(2000);
     }

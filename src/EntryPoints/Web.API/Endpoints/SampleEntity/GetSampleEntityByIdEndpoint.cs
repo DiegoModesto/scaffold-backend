@@ -20,6 +20,6 @@ internal sealed class GetSampleEntityByIdEndpoint : IEndpoint
             })
             .WithTags(Tags.SampleEntity)
             .WithName("GetSampleEntityById")
-            .RequireAuthorization();
+            .RequireAuthorization($"{Infra.Authorization.PermissionPolicyProvider.PolicyPrefix}sample.read");
     }
 }

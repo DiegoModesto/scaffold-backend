@@ -1,3 +1,4 @@
+using Application.Abstractions.Authentication;
 using Application.Abstractions.Data;
 using Application.SampleEntities.Create;
 using Domain.SampleEntities;
@@ -24,7 +25,11 @@ public class CreateSampleEntityCommandHandlerTests
             .Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var handler = new CreateSampleEntityCommandHandler(dbContext.Object);
+        Guid tenantId = Guid.NewGuid();
+        var userContext = new Mock<IUserContext>();
+        userContext.SetupGet(u => u.TenantId).Returns(tenantId);
+
+        var handler = new CreateSampleEntityCommandHandler(dbContext.Object, userContext.Object);
 
         var result = await handler.Handle(
             new CreateSampleEntityCommand("Valid Name", "desc"),
@@ -33,7 +38,22 @@ public class CreateSampleEntityCommandHandlerTests
         result.IsSuccess.ShouldBeTrue();
         sampleEntities.ShouldHaveSingleItem();
         sampleEntities[0].Name.ShouldBe("Valid Name");
+        sampleEntities[0].TenantId.ShouldBe(tenantId);
         sampleEntities[0].Id.ShouldBe(result.Value);
         dbContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_Should_Throw_WhenTenantIdMissing()
+    {
+        var dbContext = new Mock<IApplicationDbContext>();
+        var userContext = new Mock<IUserContext>();
+        userContext.SetupGet(u => u.TenantId).Returns((Guid?)null);
+
+        var handler = new CreateSampleEntityCommandHandler(dbContext.Object, userContext.Object);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => handler.Handle(
+            new CreateSampleEntityCommand("Valid Name", "desc"),
+            CancellationToken.None));
     }
 }
