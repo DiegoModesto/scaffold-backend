@@ -33,7 +33,7 @@ public sealed class SignInFlowTests(BffWebApplicationFactory factory)
 
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location.ShouldNotBeNull();
-        string location = response.Headers.Location!.ToString();
+        string location = response.Headers.Location.ToString();
         location.ShouldContain("/oauth2/authorize");
         location.ShouldContain($"client_id={BffWebApplicationFactory.ClientId}");
         location.ShouldContain("response_type=code");

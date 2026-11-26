@@ -44,13 +44,18 @@
     private MudDataGrid<M2MClientSummary>? _grid;
     private string? _error;
 
-    private async Task<GridData<M2MClientSummary>> LoadClients(GridState<M2MClientSummary> state)
+    private async Task<GridData<M2MClientSummary>> LoadClients(GridState<M2MClientSummary> state, CancellationToken cancellationToken)
     {
         try
         {
             _error = null;
-            PagedResponse<M2MClientSummary> page = await Client.ListM2MClientsAsync(state.Page + 1, state.PageSize, CancellationToken.None);
+            PagedResponse<M2MClientSummary> page = await Client.ListM2MClientsAsync(state.Page + 1, state.PageSize, cancellationToken);
             return new GridData<M2MClientSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Superseded by a newer grid request (paging/filtering); the next load wins.
+            return new GridData<M2MClientSummary> { Items = Array.Empty<M2MClientSummary>(), TotalItems = 0 };
         }
         catch (Exception ex)
         {

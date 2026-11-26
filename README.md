@@ -1,6 +1,6 @@
 # BaseProjectScaffold
 
-.NET 10 Clean Architecture / DDD scaffold with EF Core + PostgreSQL, JWT auth, Serilog + Seq, OpenTelemetry, FluentValidation, xUnit/Shouldly/Moq/NetArchTest, four entrypoints (Web.API, Web.Blazor, CronJobs, Worker) and shared RabbitMQ messaging.
+.NET 11 Clean Architecture / DDD scaffold with EF Core + PostgreSQL, JWT auth, Serilog + Seq, OpenTelemetry, FluentValidation, xUnit/Shouldly/Moq/NetArchTest, four entrypoints (Web.API, Web.Blazor, CronJobs, Worker) and shared RabbitMQ messaging.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Stack
 
-- .NET 10 (LTS), C# 14, Central Package Management
+- .NET 11 (STS), C# 15, Central Package Management
 - ASP.NET Core Minimal APIs + `Asp.Versioning` 10
 - Blazor Server (Interactive Server render mode)
 - EF Core 10 + Npgsql + snake_case naming
@@ -45,7 +45,7 @@ tests/
 
 ### Prerequisites
 
-- .NET 10 SDK (`global.json` pins `10.0.203`, `latestFeature` rollForward)
+- .NET 11 SDK (`global.json` pins `11.0.100`, `latestFeature` rollForward)
 - Docker + Docker Compose (for Postgres / RabbitMQ / Seq)
 - `dotnet-ef` optional for migrations
 
@@ -362,7 +362,7 @@ Reference docs:
 
 ### Stack
 
-- .NET 10 (LTS), C# 14, Central Package Management
+- .NET 11 (STS), C# 15, Central Package Management
 - ASP.NET Core Minimal APIs + `Asp.Versioning` 10
 - Blazor Server (modo de renderização Interactive Server)
 - EF Core 10 + Npgsql + convenção snake_case
@@ -399,7 +399,7 @@ tests/
 
 ### Pré-requisitos
 
-- SDK .NET 10 (`global.json` fixa em `10.0.203`, com `latestFeature`)
+- SDK .NET 11 (`global.json` fixa em `11.0.100`, com `latestFeature`)
 - Docker + Docker Compose (Postgres / RabbitMQ / Seq)
 - `dotnet-ef` opcional para migrations
 

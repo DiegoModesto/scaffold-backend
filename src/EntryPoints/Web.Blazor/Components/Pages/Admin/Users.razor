@@ -51,13 +51,18 @@
     private string? _search;
     private string? _error;
 
-    private async Task<GridData<UserSummary>> LoadUsers(GridState<UserSummary> state)
+    private async Task<GridData<UserSummary>> LoadUsers(GridState<UserSummary> state, CancellationToken cancellationToken)
     {
         try
         {
             _error = null;
-            PagedResponse<UserSummary> page = await Client.ListUsersAsync(state.Page + 1, state.PageSize, _search, CancellationToken.None);
+            PagedResponse<UserSummary> page = await Client.ListUsersAsync(state.Page + 1, state.PageSize, _search, cancellationToken);
             return new GridData<UserSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Superseded by a newer grid request (paging/filtering); the next load wins.
+            return new GridData<UserSummary> { Items = Array.Empty<UserSummary>(), TotalItems = 0 };
         }
         catch (Exception ex)
         {

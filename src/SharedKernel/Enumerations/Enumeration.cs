@@ -23,7 +23,7 @@ public abstract class Enumeration<TEnum> : IEquatable<Enumeration<TEnum>>
         Enumerations.TryGetValue(value, out TEnum? enumeration) ? enumeration : null;
 
     public static TEnum? FromValue(string name) =>
-        Enumerations.Values.SingleOrDefault(x => x!.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+        Enumerations.Values.SingleOrDefault(x => x.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
     private static Dictionary<int, TEnum> CreateEnumerations()
     {

@@ -51,7 +51,7 @@ internal sealed class AuthorizeEndpoint : IEndpoint
                 [EntraAuthenticationExtensions.SchemeName]);
         }
 
-        ClaimsPrincipal principal = entra.Principal!;
+        ClaimsPrincipal principal = entra.Principal;
         string? tidStr = principal.FindFirstValue("tid");
         string? oidStr = principal.FindFirstValue("oid");
         string? email = principal.FindFirstValue("preferred_username")

@@ -1,5 +1,3 @@
-@inject AuthenticationStateProvider AuthState
-
 @if (_hasPermission)
 {
     @ChildContent
@@ -10,15 +8,26 @@ else if (NoAccessFallback is not null)
 }
 
 @code {
+    // Supplied by AddCascadingAuthenticationState() (Program.cs). Using the cascading value
+    // instead of calling AuthenticationStateProvider once means the view re-evaluates when
+    // the authentication state changes (sign-in, sign-out, claim refresh) — see BL0013.
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     [Parameter] public string Permission { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? NoAccessFallback { get; set; }
 
     private bool _hasPermission;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        var state = await AuthState.GetAuthenticationStateAsync();
+        if (AuthenticationState is null)
+        {
+            _hasPermission = false;
+            return;
+        }
+
+        AuthenticationState state = await AuthenticationState;
         _hasPermission = state.User.Claims.Any(c => c.Type == "permission" && c.Value == Permission);
     }
 }

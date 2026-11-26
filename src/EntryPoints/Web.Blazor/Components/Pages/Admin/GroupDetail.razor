@@ -157,7 +157,7 @@
 
     private async Task DeleteAsync()
     {
-        bool? confirmed = await DialogService.ShowMessageBox(
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete group",
             "Are you sure? This action cannot be undone.",
             yesText: "Delete", cancelText: "Cancel");

@@ -76,6 +76,14 @@ public static class OpenIddictExtensions
                     o.AddEncryptionCertificate(LoadCert(
                         encryptionPath, configuration["OpenIddict:EncryptionCertificatePassword"]));
                 }
+                else if (configuration.GetValue("OpenIddict:UseEphemeralKeys", false))
+                {
+                    // Tests: in-memory keys, no dependency on the host's certificate store
+                    // (on macOS the development certificates live in the Keychain, which can
+                    // block on an access prompt when the dotnet host binary changes).
+                    o.AddEphemeralSigningKey();
+                    o.AddEphemeralEncryptionKey();
+                }
                 else
                 {
                     o.AddDevelopmentSigningCertificate();

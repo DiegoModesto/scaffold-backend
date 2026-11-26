@@ -30,7 +30,7 @@ public sealed class AuthDbContextModelTests
         et.ShouldNotBeNull($"Expected join table '{tableName}' to be mapped.");
         var pk = et.FindPrimaryKey();
         pk.ShouldNotBeNull();
-        var keyNames = pk!.Properties.Select(p => p.Name).ToHashSet();
+        var keyNames = pk.Properties.Select(p => p.Name).ToHashSet();
         keyNames.ShouldContain(left);
         keyNames.ShouldContain(right);
         keyNames.Count.ShouldBe(2);

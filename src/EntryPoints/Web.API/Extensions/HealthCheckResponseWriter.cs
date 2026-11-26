@@ -23,6 +23,6 @@ public static class HealthCheckResponseWriter
             })
         });
 
-        return context.Response.WriteAsync(json);
+        return context.Response.WriteAsync(json, context.RequestAborted);
     }
 }

@@ -81,7 +81,7 @@
 
     private async Task RegenerateAsync()
     {
-        bool? confirmed = await DialogService.ShowMessageBox(
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
             "Regenerate secret",
             "The previous secret will stop working immediately. Continue?",
             yesText: "Regenerate", cancelText: "Cancel");
@@ -99,7 +99,7 @@
 
     private async Task DeactivateAsync()
     {
-        bool? confirmed = await DialogService.ShowMessageBox(
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
             "Deactivate client", "Are you sure?", yesText: "Deactivate", cancelText: "Cancel");
         if (confirmed != true) return;
         try

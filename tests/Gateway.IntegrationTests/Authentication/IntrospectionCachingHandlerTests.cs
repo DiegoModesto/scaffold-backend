@@ -61,7 +61,7 @@ public sealed class IntrospectionCachingHandlerTests
         var handler = new IntrospectionCachingHandler(cache, options) { InnerHandler = inner.Object };
         var client = new HttpClient(handler);
 
-        HttpRequestMessage MakeRequest() =>
+        static HttpRequestMessage MakeRequest() =>
             new(HttpMethod.Post, "https://auth/connect/introspect")
             {
                 Content = new StringContent("token=abc123", Encoding.UTF8, "application/x-www-form-urlencoded")

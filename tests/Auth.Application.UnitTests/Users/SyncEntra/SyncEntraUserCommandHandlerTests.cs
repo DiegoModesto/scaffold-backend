@@ -110,7 +110,7 @@ public class SyncEntraUserCommandHandlerTests
         result.IsSuccess.ShouldBeTrue();
         var stored = await ctx.Users.FindAsync(result.Value);
         stored.ShouldNotBeNull();
-        stored!.TenantId.ShouldBe(tenantId);
+        stored.TenantId.ShouldBe(tenantId);
         stored.EntraOid.ShouldBe(oid);
         stored.Email.ShouldBe("user@example.com");
         stored.DisplayName.ShouldBe("Display");

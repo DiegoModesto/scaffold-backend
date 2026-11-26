@@ -7,9 +7,6 @@ namespace Infra.Authentication;
 
 public static class IntrospectionAuthenticationExtensions
 {
-    // Name OpenIddict.Validation.SystemNetHttp uses to register its IHttpClientFactory client.
-    private const string OpenIddictValidationHttpClientName = "OpenIddict.Validation.SystemNetHttp";
-
     public static IServiceCollection AddIntrospectionAuthentication(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -33,22 +30,7 @@ public static class IntrospectionAuthenticationExtensions
         string? redisConn = configuration["Redis:ConnectionString"];
         if (!string.IsNullOrWhiteSpace(redisConn))
         {
-            services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
-            services.Configure<IntrospectionCacheOptions>(
-                configuration.GetSection(IntrospectionCacheOptions.SectionName));
-            services.AddTransient<IntrospectionCachingHandler>();
-
-            services.PostConfigure<HttpClientFactoryOptions>(
-                OpenIddictValidationHttpClientName,
-                options =>
-                {
-                    options.HttpMessageHandlerBuilderActions.Add(builder =>
-                    {
-                        IntrospectionCachingHandler handler = builder.Services
-                            .GetRequiredService<IntrospectionCachingHandler>();
-                        builder.AdditionalHandlers.Add(handler);
-                    });
-                });
+            services.AddIntrospectionResponseCache(redisConn, configuration);
         }
 
         services.AddOpenIddict()
@@ -66,6 +48,23 @@ public static class IntrospectionAuthenticationExtensions
 
         services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 
+        return services;
+    }
+
+    /// <summary>
+    /// Caches OpenIddict introspection responses in Redis, keyed by the SHA-256 of the token,
+    /// for <c>IntrospectionCache:TtlSeconds</c>. Shared by Web.API and the Gateway.
+    /// </summary>
+    public static IServiceCollection AddIntrospectionResponseCache(
+        this IServiceCollection services,
+        string redisConnectionString,
+        IConfiguration configuration)
+    {
+        services.AddStackExchangeRedisCache(o => o.Configuration = redisConnectionString);
+        services.Configure<IntrospectionCacheOptions>(
+            configuration.GetSection(IntrospectionCacheOptions.SectionName));
+        services.AddTransient<IntrospectionCachingHandler>();
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, IntrospectionCacheHandlerFilter>();
         return services;
     }
 }

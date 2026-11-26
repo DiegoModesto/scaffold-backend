@@ -4,7 +4,7 @@ The authoritative guidance for AI agents in this repository lives in [`../CLAUDE
 
 ## Key invariants (see `CLAUDE.md` for full details)
 
-- **.NET 10 (LTS)**, C# 14, Central Package Management. SDK pinned via `global.json` (`10.0.203`).
+- **.NET 11 (STS)**, C# 15, Central Package Management. SDK pinned via `global.json` (`11.0.100`).
 - **Four entrypoints** under `src/EntryPoints/`: `Web.API`, `Web.Blazor`, `CronJobs`, `Worker`. All consume `Infra` for DB, auth, RabbitMQ, and OpenTelemetry.
 - **Clean Architecture** dependency rules are enforced by `tests/Web.API.IntegrationTests/Architecture/ArchitectureTests.cs` — do not break them.
 - All command/query handlers and endpoints must be `sealed`.

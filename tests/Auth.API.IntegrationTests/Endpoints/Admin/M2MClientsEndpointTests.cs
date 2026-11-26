@@ -57,7 +57,7 @@ public sealed class M2MClientsEndpointTests(AuthWebApplicationFactory factory)
 
         var body = await response.Content.ReadFromJsonAsync<CreateResponse>();
         body.ShouldNotBeNull();
-        body!.ClientSecret.ShouldNotBeNullOrEmpty();
+        body.ClientSecret.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
