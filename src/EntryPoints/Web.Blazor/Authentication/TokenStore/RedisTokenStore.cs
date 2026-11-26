@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using Web.Blazor.Authentication.TokenStore.Dtos;
 
 namespace Web.Blazor.Authentication.TokenStore;
 

@@ -1,3 +1,5 @@
+using Application.Abstractions.Authentication.Dtos;
+
 namespace Application.Abstractions.Authentication;
 
 public interface ITokenProvider

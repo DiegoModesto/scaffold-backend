@@ -1,3 +1,4 @@
+using Auth.Application.NetSuite.Dtos;
 using Auth.Application.NetSuite.InitiateSso;
 using Auth.Application.UnitTests.Infrastructure;
 using Auth.Domain.Users;

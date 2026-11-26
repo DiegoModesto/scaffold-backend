@@ -1,11 +1,13 @@
-using Infra.Authorization;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.Admin.Audit.Dtos;
 using Auth.Application.Admin.Audit.ListAuditEvents;
 using Auth.Application.Common;
+using Auth.Application.Common.Dtos;
 using Auth.Domain.Audit;
 using Auth.Domain.Permissions;
+using Infra.Authorization;
 using SharedKernel;
 
 namespace Auth.API.Endpoints.Admin;

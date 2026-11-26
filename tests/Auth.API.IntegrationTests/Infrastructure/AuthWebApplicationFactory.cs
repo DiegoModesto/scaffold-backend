@@ -3,12 +3,13 @@ using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Auth.Application.Abstractions.Crypto;
+using Auth.Application.Abstractions.Tenancy;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Domain.M2MClients;
 using Auth.Domain.Permissions;
 using Auth.Domain.Roles;
 using Auth.Domain.Tenants;
 using Auth.Domain.Users;
-using Auth.Application.Abstractions.Tenancy;
 using Auth.Infra.Database;
 using Auth.Infra.Database.Joins;
 using Microsoft.AspNetCore.Authentication;
@@ -194,7 +195,7 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
     private sealed class ThrowingNetSuiteSamlSigner
         : Auth.Application.NetSuite.InitiateSso.INetSuiteSamlSigner
     {
-        public Auth.Application.NetSuite.InitiateSso.SignedNetSuiteAssertion Sign(
+        public SignedNetSuiteAssertion Sign(
             string netSuiteEmail, Guid userId, string? relayState) =>
             throw new InvalidOperationException(
                 "ThrowingNetSuiteSamlSigner: tests must override INetSuiteSamlSigner via WithWebHostBuilder.");

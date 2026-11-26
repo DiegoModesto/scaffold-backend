@@ -1,3 +1,3 @@
-namespace Application.Abstractions.Authentication;
+namespace Application.Abstractions.Authentication.Dtos;
 
 public sealed record TokenInfo(string AccessToken, DateTimeOffset ExpiresAt);

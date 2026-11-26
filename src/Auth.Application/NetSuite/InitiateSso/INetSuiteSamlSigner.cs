@@ -1,9 +1,6 @@
-namespace Auth.Application.NetSuite.InitiateSso;
+using Auth.Application.NetSuite.Dtos;
 
-public sealed record SignedNetSuiteAssertion(
-    string AcsUrl,
-    string SamlResponseBase64,
-    string? RelayState);
+namespace Auth.Application.NetSuite.InitiateSso;
 
 public interface INetSuiteSamlSigner
 {

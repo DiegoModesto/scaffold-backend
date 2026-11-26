@@ -1,10 +1,6 @@
-namespace Web.Blazor.Authentication.TokenStore;
+using Web.Blazor.Authentication.TokenStore.Dtos;
 
-public sealed record SessionTokens(
-    string AccessToken,
-    string? RefreshToken,
-    string? IdToken,
-    DateTimeOffset ExpiresAt);
+namespace Web.Blazor.Authentication.TokenStore;
 
 public interface ITokenStore
 {

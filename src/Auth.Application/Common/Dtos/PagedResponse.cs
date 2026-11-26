@@ -1,4 +1,4 @@
-namespace Auth.Application.Common;
+namespace Auth.Application.Common.Dtos;
 
 public sealed record PagedResponse<T>(
     IReadOnlyCollection<T> Items,

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Application.NetSuite.InitiateSso;
 using Auth.Domain.Permissions;
 using OpenIddict.Abstractions;

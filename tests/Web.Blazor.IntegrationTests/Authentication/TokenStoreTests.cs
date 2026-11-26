@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Shouldly;
 using Web.Blazor.Authentication.TokenStore;
+using Web.Blazor.Authentication.TokenStore.Dtos;
 
 namespace Web.Blazor.IntegrationTests.Authentication;
 

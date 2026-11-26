@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Auth.API.IntegrationTests.Infrastructure;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Application.NetSuite.InitiateSso;
 using Auth.Domain.Permissions;
 using Microsoft.AspNetCore.Mvc.Testing;

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Application.NetSuite.InitiateSso;
 using ITfoxtec.Identity.Saml2;
 using ITfoxtec.Identity.Saml2.Schemas;

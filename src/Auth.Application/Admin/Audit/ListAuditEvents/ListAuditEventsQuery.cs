@@ -1,5 +1,7 @@
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.Admin.Audit.Dtos;
 using Auth.Application.Common;
+using Auth.Application.Common.Dtos;
 using Auth.Domain.Audit;
 
 namespace Auth.Application.Admin.Audit.ListAuditEvents;
@@ -11,12 +13,3 @@ public sealed record ListAuditEventsQuery(
     AuthAuditEventType? EventType,
     DateTimeOffset? From,
     DateTimeOffset? To) : IQuery<PagedResponse<AuthAuditEventResponse>>;
-
-public sealed record AuthAuditEventResponse(
-    Guid Id,
-    Guid? UserId,
-    AuthAuditEventType EventType,
-    string Ip,
-    string UserAgent,
-    string Detail,
-    DateTimeOffset OccurredAt);

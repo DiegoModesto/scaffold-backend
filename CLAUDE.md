@@ -61,7 +61,8 @@ src/
 │   │   └── Messaging/               # ICommand, IQuery, ICommandHandler, IQueryHandler, IMessagePublisher
 │   ├── SampleEntities/              # <REPLACE> one folder per feature
 │   │   ├── Create/                  # Command + Handler + Validator
-│   │   ├── GetById/                 # Query + Handler + Response DTO
+│   │   ├── Dtos/                    # Response DTOs shared by the feature's use cases (one per file)
+│   │   ├── GetById/                 # Query + Handler
 │   │   ├── Publish/                 # Command/Validator/Handler that publishes via IMessagePublisher
 │   │   └── Events/                  # Message contracts shared across publishers/consumers
 │   └── DependencyInjection.cs       # AddApplication() — Scrutor scan + TryDecorate
@@ -75,7 +76,8 @@ src/
 │   └── DependencyInjection.cs       # AddInfrastructure() + AddInfrastructureMessaging()
 └── EntryPoints/
     ├── Web.API/                     # HTTP entrypoint — receives requests, can publish via IMessagePublisher
-    │   ├── Endpoints/               # One folder per feature, each file implements IEndpoint
+    │   ├── Endpoints/               # One folder per feature, each file implements IEndpoint;
+    │   │                            # request bodies in Endpoints/<Feature>/Requests/
     │   ├── Extensions/              # EndpointExtensions, ResultExtensions, SecurityExtensions,
     │   │                            # ServiceCollectionExtensions
     │   ├── Infrastructure/          # CustomResults (ProblemDetails mapping)
@@ -243,11 +245,20 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 
    **Handler must be `public sealed`** (architecture test enforces sealed; public so the endpoint can inject the interface it exposes).
 
-4. **Endpoint** — `src/EntryPoints/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
+4. **Request body** — `src/EntryPoints/Web.API/Endpoints/<Feature>/Requests/<Action><Feature>Request.cs` (one record per file, never nested in the endpoint — see §12):
+
+   ```csharp
+   namespace Web.API.Endpoints.<Feature>.Requests;
+
+   public sealed record <Action><Feature>Request(string Name, string? Description);
+   ```
+
+   **Endpoint** — `src/EntryPoints/Web.API/Endpoints/<Feature>/<Action><Feature>Endpoint.cs`:
 
    ```csharp
    using Application.Abstractions.Messaging;
    using Application.<Feature>.<Action>;
+   using Web.API.Endpoints.<Feature>.Requests;
    using Web.API.Extensions;
    using Web.API.Infrastructure;
 
@@ -255,12 +266,10 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 
    internal sealed class <Action><Feature>Endpoint : IEndpoint
    {
-       public sealed record Request(string Name, string? Description);
-
        public void MapEndpoint(IEndpointRouteBuilder app)
        {
            app.MapPost("<feature>s", async (
-                   Request request,
+                   <Action><Feature>Request request,
                    ICommandHandler<<Action><Feature>Command, Guid> handler,   // ← interface, not concrete class
                    CancellationToken cancellationToken) =>
                {
@@ -287,6 +296,8 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 ### 5.2 Query / read flow
 
 Same pattern with `IQuery<TResponse>` + `IQueryHandler<TQuery, TResponse>`. **Queries are not validated by the decorator** (only commands). Use EF projection directly into a response DTO — never return domain entities.
+
+The response DTO goes in `src/Application/<Feature>/Dtos/<Feature>Response.cs` (namespace `Application.<Feature>.Dtos`), **not** in the query file — the query file declares only the query. See §12.
 
 ```csharp
 public async Task<Result<<Feature>Response>> Handle(
@@ -370,6 +381,8 @@ services.TryDecorate(typeof(ICommandHandler<>),  typeof(ValidationDecorator.Comm
 - **Always** test: 401 without token, happy path, the main validation failure path, the not-found path.
 
 ### Architecture tests
+
+Assembly-level rules (dependencies, sealed) live in `ArchitectureTests.cs` (NetArchTest). Source-layout rules (DTO folders, one record per file — §12) live in `CodeOrganizationTests.cs`, which reads `src/**/*.cs` directly so it also covers `Auth.*`, `Web.Blazor` and `Gateway` without referencing them.
 
 Add new rules to `ArchitectureTests.cs` whenever you introduce a new convention (e.g. "all validators end with `Validator`", "no `DateTime.Now` in Domain").
 
@@ -510,6 +523,19 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 - `ImplicitUsings` + `Nullable` are enabled solution-wide.
 - `file-scoped namespaces` everywhere.
 - Records for DTOs / commands / queries / responses (`public sealed record`).
+- **DTOs and records live in dedicated folders, one record per file, file name = record name.** Never declare a DTO next to the command/query that returns it, and never nest a record inside a class (endpoints included). Where each kind goes:
+
+  | Kind | Folder | Namespace |
+  |---|---|---|
+  | Command / Query | `<Feature>/<Action>/` (only the command/query in the file; file ends in `Command.cs` / `Query.cs`) | `<Layer>.<Feature>.<Action>` |
+  | Response / Summary / Ref / any other DTO in `Application` / `Auth.Application` | `<Feature>/Dtos/` — shared by every use case of the feature (e.g. `Admin/Users/Dtos/UserDetailResponse.cs`) | `<Layer>.<Feature>.Dtos` |
+  | DTO shared across features | `Common/Dtos/` (e.g. `PagedResponse<T>`) | `<Layer>.Common.Dtos` |
+  | Message contracts (RabbitMQ) | `<Feature>/Events/` | `<Layer>.<Feature>.Events` |
+  | HTTP request body (Web.API / Auth.API) | `Endpoints/<Feature>/Requests/<Action><Feature>Request.cs` | `<Api>.Endpoints.<Feature>.Requests` |
+  | Web.Blazor typed-client contracts | `Gateway/Contracts/` | `Web.Blazor.Gateway.Contracts` |
+  | Other entrypoint-internal records | `<Area>/Dtos/` | `<Api>.<Area>.Dtos` |
+
+  `Domain`, `Auth.Domain` and `SharedKernel` are exempt — records there are value objects / building blocks (`Error`), not DTOs. Enforced by `tests/Web.API.IntegrationTests/Architecture/CodeOrganizationTests.cs`, which scans every `.cs` file under `src/`.
 - Classes for handlers (`public sealed class`).
 - `internal` for validators, endpoints, and EF configurations (the `InternalsVisibleTo` attribute exposes them to tests).
 - Primary constructors are preferred (`public sealed class Foo(IDep dep) : IBar`).

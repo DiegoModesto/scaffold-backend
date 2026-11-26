@@ -1,4 +1,5 @@
 using Application.Abstractions.Messaging;
+using Application.SampleEntities.Dtos;
 using Application.SampleEntities.GetById;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
