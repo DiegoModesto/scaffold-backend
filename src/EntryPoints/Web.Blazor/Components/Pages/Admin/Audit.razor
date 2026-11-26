@@ -91,7 +91,7 @@
         catch (Exception ex) { _error = ex.Message; }
     }
 
-    private async Task<GridData<AuthAuditEventResponse>> LoadEvents(GridState<AuthAuditEventResponse> state)
+    private async Task<GridData<AuthAuditEventResponse>> LoadEvents(GridState<AuthAuditEventResponse> state, CancellationToken cancellationToken)
     {
         try
         {
@@ -100,8 +100,13 @@
             DateTimeOffset? toOff = _to is null ? null : new DateTimeOffset(_to.Value, TimeSpan.Zero);
             string? eventType = string.IsNullOrEmpty(_eventType) ? null : _eventType;
             PagedResponse<AuthAuditEventResponse> page = await Client.ListAuditEventsAsync(
-                state.Page + 1, state.PageSize, _userId, eventType, fromOff, toOff, CancellationToken.None);
+                state.Page + 1, state.PageSize, _userId, eventType, fromOff, toOff, cancellationToken);
             return new GridData<AuthAuditEventResponse> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Superseded by a newer grid request (paging/filtering); the next load wins.
+            return new GridData<AuthAuditEventResponse> { Items = Array.Empty<AuthAuditEventResponse>(), TotalItems = 0 };
         }
         catch (Exception ex)
         {

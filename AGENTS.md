@@ -6,7 +6,7 @@ This file exists so tools that look specifically for `AGENTS.md` (Cursor, Aider,
 
 ## Quick reference (full details in `CLAUDE.md`)
 
-- **Stack**: .NET 10 (LTS), C# 14, Central Package Management. SDK pinned by `global.json` to `10.0.203`.
+- **Stack**: .NET 11 (STS), C# 15, Central Package Management. SDK pinned by `global.json` to `11.0.100`.
 - **Entrypoints** (`src/EntryPoints/`): `Web.API` (Minimal APIs), `Web.Blazor` (Blazor Server), `CronJobs` (Cronos scheduler), `Worker` (RabbitMQ consumer). All four share `Infra` for DB, auth, messaging, and OpenTelemetry.
 - **Layering**: `Domain → SharedKernel`; `Application → Domain`; `Infra → Application`; entrypoints → `Infra`. Enforced by `tests/Web.API.IntegrationTests/Architecture/ArchitectureTests.cs`.
 - **Handlers / endpoints must be `sealed`.** Endpoints inject the **handler interface** (`ICommandHandler<,>`), never the concrete class — otherwise the `ValidationDecorator` is bypassed.

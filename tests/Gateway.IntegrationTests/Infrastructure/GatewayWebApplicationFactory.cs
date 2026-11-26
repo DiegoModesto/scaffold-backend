@@ -20,8 +20,7 @@ namespace Gateway.IntegrationTests.Infrastructure;
 public sealed class GatewayWebApplicationFactory
     : WebApplicationFactory<global::Gateway.Program>, IAsyncLifetime
 {
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7-alpine")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine")
         .Build();
 
     private WireMockServer _authApi = null!;

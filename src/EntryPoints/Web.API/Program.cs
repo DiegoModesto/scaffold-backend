@@ -27,7 +27,6 @@ builder.Services
         timeout: TimeSpan.FromSeconds(5))
     .AddCheck(name: "api", check: () => HealthCheckResult.Healthy("API OK"));
 
-builder.Services.AddSwaggerGenWithAuth();
 
 builder.Services
     .AddApplication()
@@ -68,9 +67,8 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi(); // per-version documents: see AddPresentation and the AV0030 note in Web.API.csproj
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Web.API v1"));
 }
 else
 {

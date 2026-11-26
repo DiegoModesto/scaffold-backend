@@ -40,6 +40,6 @@ public class GlobalExceptionHandlingMiddleware(
         string json = JsonSerializer.Serialize(new { error, message, statusCode },
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-        await context.Response.WriteAsync(json);
+        await context.Response.WriteAsync(json, context.RequestAborted);
     }
 }

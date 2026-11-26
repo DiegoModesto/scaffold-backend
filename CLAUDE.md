@@ -8,11 +8,11 @@ This file is the **single source of truth for AI coding agents** (Claude Code, C
 
 ## 1. Project identity
 
-**BaseProjectScaffold** is a .NET 9 Clean Architecture / DDD starter template. It is meant to be **forked** for new backend services. Everything domain-specific is named `SampleEntity` — replace those placeholders when forking.
+**BaseProjectScaffold** is a .NET 11 Clean Architecture / DDD starter template. It is meant to be **forked** for new backend services. Everything domain-specific is named `SampleEntity` — replace those placeholders when forking.
 
 - Solution file: `BaseProjectScaffold.sln`
 - Default branch: `main`
-- Target framework: `net10.0` (pinned by `global.json`, SDK 10.0.203+)
+- Target framework: `net11.0`, set **once** in `Directory.Build.props` (projects don't repeat it). SDK pinned by `global.json` (11.0.100+). .NET 11 is STS (supported until Nov 2028); C# 15 is the default language version.
 - Central Package Management: all versions live in `Directory.Packages.props`
 - NuGet packages restore into a repo-local `.nuget-cache/` folder (configured in `nuget.config`, gitignored). This avoids permission issues with the global `~/.nuget/packages/` cache and keeps installs reproducible per checkout. Delete the folder to force a clean restore.
 - Entrypoints: `Web.API` (HTTP/JSON), `Web.Blazor` (Blazor Server UI), `Worker` (RabbitMQ consumer), `CronJobs` (Cronos scheduler), `Auth.API` (standalone identity service — separate bounded context with its own DB), `Gateway` (YARP reverse proxy with Redis-backed introspection cache).
@@ -78,8 +78,9 @@ src/
     ├── Web.API/                     # HTTP entrypoint — receives requests, can publish via IMessagePublisher
     │   ├── Endpoints/               # One folder per feature, each file implements IEndpoint;
     │   │                            # request bodies in Endpoints/<Feature>/Requests/
-    │   ├── Extensions/              # EndpointExtensions, ResultExtensions, SecurityExtensions,
-    │   │                            # ServiceCollectionExtensions
+    │   ├── Extensions/              # EndpointExtensions, ResultExtensions, SecurityExtensions
+    │   ├── OpenApi/                 # Built-in OpenAPI (AddOpenApi per API version) transformers;
+    │   │                            # Swagger UI reads /openapi/v1.json in Development
     │   ├── Infrastructure/          # CustomResults (ProblemDetails mapping)
     │   ├── Middleware/              # GlobalExceptionHandlingMiddleware, RequestContextLoggingMiddleware,
     │   │                            # SecurityHeadersMiddleware
@@ -291,7 +292,7 @@ Replace `<Feature>` with the aggregate/feature name (e.g. `Orders`) and `<Action
 5. **Tests**
    - `tests/Application.UnitTests/<Feature>/<Action><Feature>CommandValidatorTests.cs` — use `FluentValidation.TestHelper`
    - `tests/Application.UnitTests/<Feature>/<Action><Feature>CommandHandlerTests.cs` — mock `IApplicationDbContext` via Moq
-   - `tests/Web.API.IntegrationTests/Endpoints/<Feature>EndpointTests.cs` — add cases to the existing `IClassFixture<CustomWebApplicationFactory>`
+   - `tests/Web.API.IntegrationTests/Endpoints/<Feature>EndpointTests.cs` — add `[Collection(WebApiCollection.Name)]` and take `CustomWebApplicationFactory` in the constructor
 
 ### 5.2 Query / read flow
 
@@ -374,7 +375,7 @@ services.TryDecorate(typeof(ICommandHandler<>),  typeof(ValidationDecorator.Comm
 
 ### Integration tests (`Web.API.IntegrationTests`)
 
-- Use `IClassFixture<CustomWebApplicationFactory>` — fixture is shared per class.
+- Put every test class in `[Collection(WebApiCollection.Name)]` — **one** `CustomWebApplicationFactory` for the whole assembly. Don't use `IClassFixture`: each factory starts its own WireMock and writes `Auth__*` into process-wide env vars, so parallel factories overwrite each other's Auth.API address and auth tests fail at random.
 - Factory replaces real `DbContext` with EF InMemory, sets env vars (`DB_CONNECTION_STRING`, `Auth__*`) in its constructor **before** `Program.Main` runs, and starts a WireMock server impersonating Auth.API's `/connect/introspect`.
 - Factory exposes `IssueTestToken(tenantId, subjectId, params permissions)` — returns an opaque token whose introspection response carries the requested claims (sub, tenant_id, permission). Pass that token via `Authorization: Bearer <token>` to test authenticated requests.
 - When adding new EF-related tests, note the factory strips all `Microsoft.EntityFrameworkCore.*` descriptors to avoid the "multiple providers" error.
@@ -574,6 +575,9 @@ Local dev: point an OpenTelemetry collector at `http://localhost:4317` and set `
 | NetSuite SAML POST rejected with `NotOnOrAfter` / clock skew | Server clock drift > 5 min vs. NetSuite | Tighten NTP on the Auth.API host; the `subjectConfirmationLifetime` is intentionally short (5 min) per `NetSuiteSamlSigner` |
 | NetSuite returns "User not found" after a successful POST | The signed `NameID` (= `User.NetSuiteEmail`) does not match an active NetSuite user's email | Update the user's NetSuite email in the BFF admin UI (`/admin/users/{id}` → "Set NetSuite email") |
 | `NetSuite SAML is not configured` thrown at runtime | One of `NetSuite__AccountId / SamlAcsUrl / SamlAudience / SamlIssuer / SamlSigningCertificatePath` is empty | Configure all five — `NetSuiteSamlOptions.IsConfigured` checks the set as a whole |
+| Gateway / Web.API calls `/connect/introspect` on every request even with Redis configured | The introspection cache handler is not attached to OpenIddict's HttpClient. OpenIddict doesn't expose a `DelegatingHandler` API and its IHttpClientFactory client name is internal (6.x used the bare assembly name; 7.x changed it) | Always wire the cache through `AddIntrospectionResponseCache(...)` — it registers `IntrospectionCacheHandlerFilter`, which matches the `OpenIddict.Validation.SystemNetHttp` name **prefix**. Never `PostConfigure<HttpClientFactoryOptions>` an exact client name. `Gateway.IntegrationTests` `CacheBehaviorTests` guards this |
+| Auth.API tests (or local token issuance) hang forever on macOS at the first successful `/connect/token` | `AddDevelopmentSigningCertificate()` / `AddDevelopmentEncryptionCertificate()` read the macOS Keychain; after the `dotnet` host binary changes (new SDK) the Keychain waits on an access prompt | Tests set `OpenIddict__UseEphemeralKeys=true` (in-memory keys). Locally, approve the Keychain prompt once, or set the same flag |
+| `CS0234: 'Embedded' does not exist in namespace 'Microsoft.Extensions.Validation'` in `Web.Blazor.GlobalUsings.g.cs` | An editor build host (e.g. VS Code C# Dev Kit) running an older SDK (.NET 10) writes into the same `obj/` and its Razor targets add that global using | Point the editor at the .NET 11 SDK (install it system-wide and restart the editor), then rebuild. Not a code problem |
 
 ---
 

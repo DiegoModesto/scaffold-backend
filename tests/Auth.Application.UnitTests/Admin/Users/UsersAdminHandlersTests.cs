@@ -107,7 +107,7 @@ public class UsersAdminHandlersTests
         result.IsSuccess.ShouldBeTrue();
         var stored = await ctx.Users.FindAsync(result.Value);
         stored.ShouldNotBeNull();
-        stored!.IsPreProvisioned.ShouldBeTrue();
+        stored.IsPreProvisioned.ShouldBeTrue();
         stored.NetSuiteEmail.ShouldBe("alice@ns.example.com");
         stored.TenantId.ShouldBe(TenantId);
     }

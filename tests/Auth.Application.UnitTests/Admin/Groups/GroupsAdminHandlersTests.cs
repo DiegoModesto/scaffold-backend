@@ -78,7 +78,7 @@ public class GroupsAdminHandlersTests
         result.IsSuccess.ShouldBeTrue();
         var stored = await ctx.Groups.FindAsync(result.Value);
         stored.ShouldNotBeNull();
-        stored!.TenantId.ShouldBe(TenantId);
+        stored.TenantId.ShouldBe(TenantId);
     }
 
     [Fact]

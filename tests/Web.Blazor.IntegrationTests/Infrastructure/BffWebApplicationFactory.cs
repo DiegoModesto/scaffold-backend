@@ -30,8 +30,7 @@ namespace Web.Blazor.IntegrationTests.Infrastructure;
 public sealed class BffWebApplicationFactory
     : WebApplicationFactory<Web.Blazor.Program>, IAsyncLifetime
 {
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7-alpine")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine")
         .Build();
 
     private WireMockServer _authApi = null!;

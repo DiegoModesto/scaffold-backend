@@ -32,7 +32,7 @@ public sealed class TokenStoreTests
         SessionTokens? loaded = await store.GetAsync("session-A");
 
         loaded.ShouldNotBeNull();
-        loaded!.AccessToken.ShouldBe(tokens.AccessToken);
+        loaded.AccessToken.ShouldBe(tokens.AccessToken);
         loaded.RefreshToken.ShouldBe(tokens.RefreshToken);
         loaded.IdToken.ShouldBe(tokens.IdToken);
         loaded.ExpiresAt.ShouldBe(tokens.ExpiresAt, TimeSpan.FromSeconds(1));

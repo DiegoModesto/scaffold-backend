@@ -37,7 +37,7 @@ public class PublishSampleEventCommandHandlerTests
         result.Value.ShouldNotBe(Guid.Empty);
 
         captured.ShouldNotBeNull();
-        captured!.Id.ShouldBe(result.Value);
+        captured.Id.ShouldBe(result.Value);
         captured.Name.ShouldBe("polled");
         captured.Description.ShouldBe("desc");
 

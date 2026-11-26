@@ -40,15 +40,13 @@ namespace Auth.API.IntegrationTests.Infrastructure;
 /// </summary>
 public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("auth_db")
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();
 
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7-alpine")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine")
         .Build();
 
     private WireMockServer _entra = null!;
@@ -72,6 +70,7 @@ public sealed class AuthWebApplicationFactory : WebApplicationFactory<Auth.API.P
         Environment.SetEnvironmentVariable(
             "Redis__ConnectionString",
             $"{_redis.GetConnectionString()},abortConnect=false");
+        Environment.SetEnvironmentVariable("OpenIddict__UseEphemeralKeys", "true");
 
         _testRsa = RSA.Create(2048);
         _testSigningKey = new RsaSecurityKey(_testRsa) { KeyId = "test-key-1" };

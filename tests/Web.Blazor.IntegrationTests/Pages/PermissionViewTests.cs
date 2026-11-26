@@ -15,24 +15,24 @@ namespace Web.Blazor.IntegrationTests.Pages;
 /// user. We do not render the full admin pages (they pull MudBlazor + IAdminGatewayClient
 /// which require a richer test scaffolding); a separate end-to-end suite can do that.
 /// </summary>
-public sealed class PermissionViewTests : TestContext
+public sealed class PermissionViewTests : BunitContext
 {
     public PermissionViewTests()
     {
-        // Register the bUnit fake AuthenticationStateProvider so PermissionView's
-        // [Inject] AuthenticationStateProvider resolves cleanly. Each test mutates the
-        // returned principal via TestAuthorizationContext.
+        // AddAuthorization() (per test) registers bUnit's fake AuthenticationStateProvider and
+        // cascades Task<AuthenticationState> into PermissionView. Each test mutates the
+        // principal via BunitAuthorizationContext.
         Services.AddAuthorizationCore();
     }
 
     [Fact]
     public void RendersChildContent_WhenUserHasPermission()
     {
-        TestAuthorizationContext authContext = this.AddTestAuthorization();
+        BunitAuthorizationContext authContext = AddAuthorization();
         authContext.SetAuthorized("alice");
         authContext.SetClaims(new Claim("permission", "users.read"));
 
-        IRenderedComponent<PermissionView> cut = RenderComponent<PermissionView>(parameters => parameters
+        IRenderedComponent<PermissionView> cut = Render<PermissionView>(parameters => parameters
             .Add(p => p.Permission, "users.read")
             .AddChildContent("<span class=\"granted\">visible</span>"));
 
@@ -43,11 +43,11 @@ public sealed class PermissionViewTests : TestContext
     [Fact]
     public void HidesChildContent_AndShowsFallback_WhenUserMissingPermission()
     {
-        TestAuthorizationContext authContext = this.AddTestAuthorization();
+        BunitAuthorizationContext authContext = AddAuthorization();
         authContext.SetAuthorized("bob");
         authContext.SetClaims(new Claim("permission", "users.read"));
 
-        IRenderedComponent<PermissionView> cut = RenderComponent<PermissionView>(parameters => parameters
+        IRenderedComponent<PermissionView> cut = Render<PermissionView>(parameters => parameters
             .Add(p => p.Permission, "users.write")
             .AddChildContent("<span class=\"granted\">should-not-appear</span>")
             .Add<RenderFragment>(p => p.NoAccessFallback!, fallback => fallback.AddMarkupContent(0, "<span class=\"denied\">no access</span>")));
@@ -60,14 +60,30 @@ public sealed class PermissionViewTests : TestContext
     [Fact]
     public void RendersNothing_WhenUserMissingPermission_AndNoFallback()
     {
-        TestAuthorizationContext authContext = this.AddTestAuthorization();
+        BunitAuthorizationContext authContext = AddAuthorization();
         authContext.SetAuthorized("carol");
         authContext.SetClaims(new Claim("permission", "users.read"));
 
-        IRenderedComponent<PermissionView> cut = RenderComponent<PermissionView>(parameters => parameters
+        IRenderedComponent<PermissionView> cut = Render<PermissionView>(parameters => parameters
             .Add(p => p.Permission, "users.write")
             .AddChildContent("<span class=\"granted\">hidden</span>"));
 
         cut.Markup.ShouldNotContain("hidden");
+    }
+
+    [Fact]
+    public void RendersChildContent_WhenPermissionIsGrantedAfterFirstRender()
+    {
+        BunitAuthorizationContext authContext = AddAuthorization();
+        authContext.SetAuthorized("dave");
+
+        IRenderedComponent<PermissionView> cut = Render<PermissionView>(parameters => parameters
+            .Add(p => p.Permission, "users.read")
+            .AddChildContent("<span class=\"granted\">late</span>"));
+        cut.Markup.ShouldNotContain("late");
+
+        authContext.SetClaims(new Claim("permission", "users.read"));
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("late"));
     }
 }

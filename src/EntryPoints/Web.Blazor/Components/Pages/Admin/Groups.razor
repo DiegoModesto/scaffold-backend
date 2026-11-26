@@ -50,13 +50,18 @@
     private string? _search;
     private string? _error;
 
-    private async Task<GridData<GroupSummary>> LoadGroups(GridState<GroupSummary> state)
+    private async Task<GridData<GroupSummary>> LoadGroups(GridState<GroupSummary> state, CancellationToken cancellationToken)
     {
         try
         {
             _error = null;
-            PagedResponse<GroupSummary> page = await Client.ListGroupsAsync(state.Page + 1, state.PageSize, _search, CancellationToken.None);
+            PagedResponse<GroupSummary> page = await Client.ListGroupsAsync(state.Page + 1, state.PageSize, _search, cancellationToken);
             return new GridData<GroupSummary> { Items = page.Items, TotalItems = page.Total };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Superseded by a newer grid request (paging/filtering); the next load wins.
+            return new GridData<GroupSummary> { Items = Array.Empty<GroupSummary>(), TotalItems = 0 };
         }
         catch (Exception ex)
         {

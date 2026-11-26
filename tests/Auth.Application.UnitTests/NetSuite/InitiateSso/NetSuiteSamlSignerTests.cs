@@ -81,7 +81,7 @@ public sealed class NetSuiteSamlSignerTests : IDisposable
 
         XmlNode? nameId = doc.SelectSingleNode("//saml:NameID", ns);
         nameId.ShouldNotBeNull();
-        nameId!.InnerText.ShouldBe("user@netsuite.example");
+        nameId.InnerText.ShouldBe("user@netsuite.example");
         nameId.Attributes!["Format"]!.Value
             .ShouldBe("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
 

@@ -89,7 +89,7 @@ public class M2MClientsAdminHandlersTests
 
         var stored = await ctx.M2MClients.FindAsync(result.Value.Id);
         stored.ShouldNotBeNull();
-        stored!.ClientSecretHash.ShouldStartWith("h:");
+        stored.ClientSecretHash.ShouldStartWith("h:");
 
         manager.Verify(
             m => m.CreateAsync(
