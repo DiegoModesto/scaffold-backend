@@ -296,7 +296,7 @@ empty diff. No phase starts with the previous one red.
 | 0 | EF spike: optional complex type + private-ctor binding | Throwaway test resolves this document's §12 |
 | 1 | `SharedKernel`: `Entity`, `IStronglyTypedId`, `JsonConverterFactory` | Build + tests green |
 | 2 | `SampleEntity` end to end — the template's canonical example | Empty migration diff |
-| 3 | Tenant-guard regression test, **written to fail** | Red on purpose |
+| 3 | Tenant-guard characterization test | **Green on arrival** — it locks in behaviour that works today (see §7.1) and only turns red if phase 9 silences the guard |
 | 4 | `Tenant`, `Permission` | Empty diff, green |
 | 5 | `Role`, `Group` | Empty diff, green |
 | 6 | `User` | Empty diff, green |
