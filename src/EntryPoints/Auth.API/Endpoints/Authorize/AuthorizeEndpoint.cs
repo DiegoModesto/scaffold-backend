@@ -6,6 +6,7 @@ using Auth.API.Telemetry;
 using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.Tenants.Dtos;
 using Auth.Application.Tenants.Resolve;
 using Auth.Application.Users.SyncEntra;
 using Auth.Domain.Audit;

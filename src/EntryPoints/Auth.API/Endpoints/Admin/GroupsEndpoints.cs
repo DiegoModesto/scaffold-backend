@@ -1,16 +1,19 @@
-using Infra.Authorization;
+using Auth.API.Endpoints.Admin.Requests;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Admin.Groups.AssignRole;
 using Auth.Application.Admin.Groups.Create;
 using Auth.Application.Admin.Groups.Delete;
+using Auth.Application.Admin.Groups.Dtos;
 using Auth.Application.Admin.Groups.GetGroup;
 using Auth.Application.Admin.Groups.ListGroups;
 using Auth.Application.Admin.Groups.RevokeRole;
 using Auth.Application.Admin.Groups.Update;
 using Auth.Application.Common;
+using Auth.Application.Common.Dtos;
 using Auth.Domain.Permissions;
+using Infra.Authorization;
 using SharedKernel;
 
 namespace Auth.API.Endpoints.Admin;
@@ -96,6 +99,4 @@ internal sealed class GroupsEndpoints : IEndpoint
             return result.Match(Results.NoContent, CustomResults.Problem);
         }).RequireAuthorization(PolicyWrite);
     }
-
-    private sealed record UpdateGroupRequest(string Name, string Description, Guid? EntraGroupId);
 }

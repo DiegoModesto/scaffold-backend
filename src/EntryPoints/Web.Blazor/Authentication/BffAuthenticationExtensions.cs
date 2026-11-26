@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Web.Blazor.Authentication.TokenStore;
+using Web.Blazor.Authentication.TokenStore.Dtos;
 
 namespace Web.Blazor.Authentication;
 

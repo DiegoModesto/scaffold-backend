@@ -1,14 +1,16 @@
-using Infra.Authorization;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Admin.M2MClients.Create;
 using Auth.Application.Admin.M2MClients.Deactivate;
+using Auth.Application.Admin.M2MClients.Dtos;
 using Auth.Application.Admin.M2MClients.GetM2MClient;
 using Auth.Application.Admin.M2MClients.ListM2MClients;
 using Auth.Application.Admin.M2MClients.RegenerateSecret;
 using Auth.Application.Common;
+using Auth.Application.Common.Dtos;
 using Auth.Domain.Permissions;
+using Infra.Authorization;
 using SharedKernel;
 
 namespace Auth.API.Endpoints.Admin;

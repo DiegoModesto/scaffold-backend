@@ -1,6 +1,7 @@
 using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Abstractions.Tenancy;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using SharedKernel;

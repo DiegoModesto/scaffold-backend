@@ -1,6 +1,7 @@
 using Auth.Application.Abstractions.Crypto;
 using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.Tenants.Dtos;
 using Auth.Application.Tenants.Resolve;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;

@@ -1,4 +1,5 @@
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.NetSuite.Dtos;
 
 namespace Auth.Application.NetSuite.InitiateSso;
 

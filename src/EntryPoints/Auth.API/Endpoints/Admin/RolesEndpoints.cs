@@ -1,16 +1,19 @@
-using Infra.Authorization;
+using Auth.API.Endpoints.Admin.Requests;
 using Auth.API.Extensions;
 using Auth.API.Infrastructure;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.Admin.Roles.AssignPermission;
 using Auth.Application.Admin.Roles.Create;
 using Auth.Application.Admin.Roles.Delete;
+using Auth.Application.Admin.Roles.Dtos;
 using Auth.Application.Admin.Roles.GetRole;
 using Auth.Application.Admin.Roles.ListRoles;
 using Auth.Application.Admin.Roles.RevokePermission;
 using Auth.Application.Admin.Roles.Update;
 using Auth.Application.Common;
+using Auth.Application.Common.Dtos;
 using Auth.Domain.Permissions;
+using Infra.Authorization;
 using SharedKernel;
 
 namespace Auth.API.Endpoints.Admin;
@@ -98,6 +101,4 @@ internal sealed class RolesEndpoints : IEndpoint
             return result.Match(Results.NoContent, CustomResults.Problem);
         }).RequireAuthorization(PolicyWrite);
     }
-
-    private sealed record UpdateRoleRequest(string Name, string Description);
 }

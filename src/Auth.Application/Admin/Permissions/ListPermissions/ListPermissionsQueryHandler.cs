@@ -1,5 +1,6 @@
 using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Messaging;
+using Auth.Application.Admin.Permissions.Dtos;
 using Microsoft.EntityFrameworkCore;
 using SharedKernel;
 

@@ -6,6 +6,7 @@ using Auth.Application.Abstractions.Data;
 using Auth.Application.Abstractions.Identity;
 using Auth.Application.Abstractions.Messaging;
 using Auth.Application.M2MClients.Authenticate;
+using Auth.Application.M2MClients.Dtos;
 using Auth.Domain.Audit;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;

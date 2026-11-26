@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Xml;
+using Auth.Application.NetSuite.Dtos;
 using Auth.Application.NetSuite.InitiateSso;
 using Auth.Infra.NetSuite;
 using Microsoft.Extensions.Options;

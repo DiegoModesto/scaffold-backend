@@ -1,6 +1,7 @@
 using Application.Abstractions.Authentication;
 using Application.Abstractions.Data;
 using Application.Abstractions.Messaging;
+using Application.SampleEntities.Dtos;
 using Domain.SampleEntities;
 using Microsoft.EntityFrameworkCore;
 using SharedKernel;

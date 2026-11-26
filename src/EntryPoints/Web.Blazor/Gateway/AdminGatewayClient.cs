@@ -5,7 +5,9 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Web.Blazor.Authentication.TokenStore;
+using Web.Blazor.Authentication.TokenStore.Dtos;
 using Web.Blazor.Gateway.Contracts;
+using Web.Blazor.Gateway.Dtos;
 
 namespace Web.Blazor.Gateway;
 
@@ -272,8 +274,4 @@ internal sealed class AdminGatewayClient(
         using HttpResponseMessage resp = await httpClient.SendAsync(req, ct);
         resp.EnsureSuccessStatusCode();
     }
-
-    private sealed record IdResponse(Guid Id);
-
-    private sealed record SecretResponse(string ClientSecret);
 }

@@ -1,5 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.SampleEntities.Create;
+using Web.API.Endpoints.SampleEntity.Requests;
 using Web.API.Extensions;
 using Web.API.Infrastructure;
 
@@ -7,12 +8,10 @@ namespace Web.API.Endpoints.SampleEntity;
 
 internal sealed class CreateSampleEntityEndpoint : IEndpoint
 {
-    public sealed record Request(string Name, string? Description);
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("sample-entities", async (
-                Request request,
+                CreateSampleEntityRequest request,
                 ICommandHandler<CreateSampleEntityCommand, Guid> handler,
                 CancellationToken cancellationToken) =>
             {
